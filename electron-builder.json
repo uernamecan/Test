@@ -1,0 +1,22 @@
+{
+  "appId": "com.local.musicplayer",
+  "productName": "PulseLocal",
+  "directories": {
+    "output": "release",
+    "buildResources": "public"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*",
+    "package.json"
+  ],
+  "extraMetadata": {
+    "main": "dist-electron/electron/main.js"
+  },
+  "win": {
+    "target": [
+      "nsis"
+    ]
+  }
+}
+
