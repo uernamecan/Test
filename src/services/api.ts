@@ -17,8 +17,14 @@ export const musicApi = {
   selectFolders() {
     return getMusicApi().selectFolders()
   },
+  selectAudioFiles() {
+    return getMusicApi().selectAudioFiles()
+  },
   scanLibrary(paths: string[]) {
     return getMusicApi().scanLibrary(paths)
+  },
+  getLibrarySourceInfo(paths: string[]) {
+    return getMusicApi().getLibrarySourceInfo(paths)
   },
   getAllTracks() {
     return getMusicApi().getAllTracks()
@@ -31,6 +37,36 @@ export const musicApi = {
   },
   openTrackFile(trackPath: string) {
     return getMusicApi().openTrackFile(trackPath)
+  },
+  showLibrarySourceInFolder(sourcePath: string) {
+    return getMusicApi().showLibrarySourceInFolder(sourcePath)
+  },
+  openLibrarySourcePath(sourcePath: string) {
+    return getMusicApi().openLibrarySourcePath(sourcePath)
+  },
+  getAppStorageInfo() {
+    return getMusicApi().getAppStorageInfo()
+  },
+  openAppStorageFolder() {
+    return getMusicApi().openAppStorageFolder()
+  },
+  backupDatabase() {
+    return getMusicApi().backupDatabase()
+  },
+  checkDatabaseHealth() {
+    return getMusicApi().checkDatabaseHealth()
+  },
+  optimizeDatabase() {
+    return getMusicApi().optimizeDatabase()
+  },
+  cleanupArtworkCache() {
+    return getMusicApi().cleanupArtworkCache()
+  },
+  exportDiagnosticsReport() {
+    return getMusicApi().exportDiagnosticsReport()
+  },
+  exportLibraryCsv() {
+    return getMusicApi().exportLibraryCsv()
   },
   setTrackFavorite(trackId: string, isFavorite: boolean) {
     return getMusicApi().setTrackFavorite(trackId, isFavorite)
@@ -49,6 +85,9 @@ export const musicApi = {
   },
   removeHistoryEntry(historyId: string) {
     return getMusicApi().removeHistoryEntry(historyId)
+  },
+  removeTrackHistory(trackId: string) {
+    return getMusicApi().removeTrackHistory(trackId)
   },
   createPlaylist(name: string) {
     return getMusicApi().createPlaylist(name)
@@ -79,6 +118,12 @@ export const musicApi = {
   },
   refreshPlaylistCovers() {
     return getMusicApi().refreshPlaylistCovers()
+  },
+  exportPlaylistToM3u(playlistId: string) {
+    return getMusicApi().exportPlaylistToM3u(playlistId)
+  },
+  importPlaylistFromM3u() {
+    return getMusicApi().importPlaylistFromM3u()
   },
   deletePlaylist(playlistId: string) {
     return getMusicApi().deletePlaylist(playlistId)

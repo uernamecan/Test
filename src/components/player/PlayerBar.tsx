@@ -28,6 +28,7 @@ export default function PlayerBar() {
   const duration = usePlayerStore((state) => state.duration)
   const playMode = usePlayerStore((state) => state.playMode)
   const setVolume = usePlayerStore((state) => state.setVolume)
+  const toggleMute = usePlayerStore((state) => state.toggleMute)
   const setProgress = usePlayerStore((state) => state.setProgress)
   const cyclePlayMode = usePlayerStore((state) => state.cyclePlayMode)
   const lyricsVisible = useUiStore((state) => state.lyricsVisible)
@@ -35,12 +36,22 @@ export default function PlayerBar() {
   const toggleLyrics = useUiStore((state) => state.toggleLyrics)
 
   const handleSeek = (nextProgress: number) => {
-    playerService.seekTo(nextProgress)
-    setProgress(nextProgress)
+    if (!currentTrack || duration <= 0) {
+      return
+    }
+
+    const safeProgress = Math.min(Math.max(nextProgress, 0), duration)
+    playerService.seekTo(safeProgress)
+    setProgress(safeProgress)
   }
 
   const handleVolumeChange = (nextVolume: number) => {
     setVolume(nextVolume)
+    playerService.setVolume(nextVolume)
+  }
+
+  const handleToggleMute = () => {
+    const nextVolume = toggleMute()
     playerService.setVolume(nextVolume)
   }
 
@@ -207,7 +218,7 @@ export default function PlayerBar() {
         <div className="order-2 grid gap-3 lg:col-span-1 lg:order-3 xl:col-span-1">
           <AudioVisualizer />
           <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-            <VolumeControl volume={volume} onChange={handleVolumeChange} />
+            <VolumeControl volume={volume} onChange={handleVolumeChange} onToggleMute={handleToggleMute} />
             <SleepTimerControl />
           </div>
         </div>

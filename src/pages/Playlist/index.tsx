@@ -70,6 +70,8 @@ export default function PlaylistPage() {
   const renamePlaylist = usePlaylistStore((state) => state.renamePlaylist)
   const removeTrackFromPlaylist = usePlaylistStore((state) => state.removeTrackFromPlaylist)
   const moveTrackInPlaylist = usePlaylistStore((state) => state.moveTrackInPlaylist)
+  const exportPlaylistToM3u = usePlaylistStore((state) => state.exportPlaylistToM3u)
+  const importPlaylistFromM3u = usePlaylistStore((state) => state.importPlaylistFromM3u)
   const deletePlaylist = usePlaylistStore((state) => state.deletePlaylist)
   const playSelection = usePlayerStore((state) => state.playSelection)
   const showFeedback = useFeedbackStore((state) => state.showFeedback)
@@ -83,6 +85,7 @@ export default function PlaylistPage() {
   const [density, setDensity] = useState<TableDensity>('comfortable')
   const [movingTrackId, setMovingTrackId] = useState<string | null>(null)
   const [removingTrackId, setRemovingTrackId] = useState<string | null>(null)
+  const [playlistExchangeBusy, setPlaylistExchangeBusy] = useState<'export' | 'import' | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const playlistViewHydratedRef = useRef(false)
 
@@ -252,6 +255,69 @@ export default function PlaylistPage() {
     })
   }
 
+  const handleExportPlaylist = async () => {
+    if (!id || playlistExchangeBusy) {
+      return
+    }
+
+    setPlaylistExchangeBusy('export')
+
+    try {
+      const result = await exportPlaylistToM3u(id)
+
+      if (result) {
+        showFeedback('Playlist exported as M3U.', 'success', null, {
+          detail: `${result.trackCount} track${result.trackCount === 1 ? '' : 's'} saved to ${result.filePath}.`
+        })
+        return
+      }
+
+      const exportError = usePlaylistStore.getState().error
+
+      if (exportError) {
+        showFeedback('Could not export this playlist.', 'error', null, {
+          detail: exportError
+        })
+      }
+    } finally {
+      setPlaylistExchangeBusy(null)
+    }
+  }
+
+  const handleImportPlaylist = async () => {
+    if (playlistExchangeBusy) {
+      return
+    }
+
+    setPlaylistExchangeBusy('import')
+
+    try {
+      const result = await importPlaylistFromM3u()
+
+      if (result) {
+        navigate(`/playlists/${result.playlist.id}`)
+        showFeedback(`Imported ${result.playlist.name}.`, 'success', null, {
+          detail: `${result.addedCount} matched track${result.addedCount === 1 ? '' : 's'} added${
+            result.unmatchedCount > 0
+              ? `, ${result.unmatchedCount} playlist entr${result.unmatchedCount === 1 ? 'y was' : 'ies were'} not found in this library`
+              : ''
+          }.`
+        })
+        return
+      }
+
+      const importError = usePlaylistStore.getState().error
+
+      if (importError) {
+        showFeedback('Could not import that playlist.', 'error', null, {
+          detail: importError
+        })
+      }
+    } finally {
+      setPlaylistExchangeBusy(null)
+    }
+  }
+
   const handleRename = async () => {
     if (!id) {
       return
@@ -419,6 +485,7 @@ export default function PlaylistPage() {
             <input
               value={draftName}
               onChange={(event) => setDraftName(event.target.value)}
+              maxLength={80}
               placeholder="Playlist name"
               className="rounded-2xl border border-white/10 bg-slate-950/45 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500"
             />
@@ -486,6 +553,22 @@ export default function PlaylistPage() {
                 className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Save Visible
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleExportPlaylist()}
+                disabled={!selectedPlaylist || loading || playlistExchangeBusy !== null}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {playlistExchangeBusy === 'export' ? 'Exporting...' : 'Export M3U'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleImportPlaylist()}
+                disabled={loading || playlistExchangeBusy !== null}
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {playlistExchangeBusy === 'import' ? 'Importing...' : 'Import M3U'}
               </button>
             </div>
           </div>

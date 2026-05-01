@@ -20,6 +20,44 @@ export function formatTrackMeta(format?: string, bitrate?: number) {
   return `${normalizedFormat} / ${Math.round(bitrate / 1000)} kbps`
 }
 
+export function formatFileSize(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return '0 B'
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let value = bytes
+  let unitIndex = 0
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+
+  return `${value >= 10 || unitIndex === 0 ? Math.round(value) : value.toFixed(1)} ${units[unitIndex]}`
+}
+
+export function formatDurationMs(milliseconds: number) {
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) {
+    return '0 ms'
+  }
+
+  if (milliseconds < 1000) {
+    return `${Math.round(milliseconds)} ms`
+  }
+
+  const seconds = milliseconds / 1000
+
+  if (seconds < 60) {
+    return `${seconds >= 10 ? Math.round(seconds) : seconds.toFixed(1)} sec`
+  }
+
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = Math.round(seconds % 60)
+
+  return remainingSeconds > 0 ? `${minutes} min ${remainingSeconds} sec` : `${minutes} min`
+}
+
 export function formatCollectionDuration(seconds: number) {
   if (!Number.isFinite(seconds) || seconds <= 0) {
     return '0 min'

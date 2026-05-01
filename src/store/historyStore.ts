@@ -12,6 +12,7 @@ type HistoryState = {
   loadRecentHistory: (limit?: number) => Promise<void>
   clearHistory: () => Promise<boolean>
   removeHistoryEntry: (historyId: string) => Promise<boolean>
+  removeTrackHistory: (trackId: string) => Promise<boolean>
   prependHistoryEntry: (entry: HistoryEntry) => void
   syncTrackFavorite: (trackId: string, isFavorite: boolean) => void
   syncTracksWithLibrary: (tracks: Track[]) => void
@@ -97,6 +98,25 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to remove history entry.'
+      })
+      return false
+    }
+  },
+  removeTrackHistory: async (trackId) => {
+    set({ error: null })
+
+    try {
+      await musicApi.removeTrackHistory(trackId)
+      const limit = get().limit
+      const entries = await musicApi.getRecentHistory(limit)
+      set({
+        entries: mergeUniqueRecentEntries(entries, limit),
+        loaded: true
+      })
+      return true
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to remove track history.'
       })
       return false
     }

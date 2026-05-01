@@ -9,6 +9,8 @@ type HistoryRow = TrackRow & {
   played_at: string
 }
 
+const MAX_HISTORY_ENTRIES = 500
+
 function mapHistoryRow(row: HistoryRow): HistoryEntry {
   return {
     id: row.history_id,
@@ -31,6 +33,20 @@ export function addHistoryEntry(trackId: string) {
     `
     )
     .run(historyId, trackId, playedAt)
+
+  database
+    .prepare(
+      `
+      DELETE FROM history
+      WHERE id NOT IN (
+        SELECT id
+        FROM history
+        ORDER BY played_at DESC, id DESC
+        LIMIT ?
+      )
+    `
+    )
+    .run(MAX_HISTORY_ENTRIES)
 
   const row = database
     .prepare(
@@ -110,6 +126,13 @@ export function clearHistory() {
 export function removeHistoryEntry(historyId: string) {
   const database = getDatabase()
   const result = database.prepare('DELETE FROM history WHERE id = ?').run(historyId)
+
+  return result.changes
+}
+
+export function removeTrackHistory(trackId: string) {
+  const database = getDatabase()
+  const result = database.prepare('DELETE FROM history WHERE track_id = ?').run(trackId)
 
   return result.changes
 }

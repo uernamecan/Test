@@ -130,6 +130,31 @@ export default function LyricsPanel() {
   }, [isResizing, setLyricsPanelWidth])
 
   useEffect(() => {
+    if (!lyricsVisible || isResizing) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target
+      const isTypingTarget =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)
+
+      if (event.key === 'Escape' && !isTypingTarget) {
+        toggleLyrics()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isResizing, lyricsVisible, toggleLyrics])
+
+  useEffect(() => {
     const handleResize = () => {
       const nextWidth = clampLyricsPanelWidth(lyricsPanelWidth)
 

@@ -27,7 +27,7 @@ const libraryDensityValueMap = {
   favorites: persistedTableDensitySchema
 }
 const settingValueSchemas = {
-  libraryPaths: z.array(z.string().trim().min(1)).max(50),
+  libraryPaths: z.array(z.string().trim().min(1)).max(1000),
   theme: z.enum(['light', 'dark']),
   trayEnabled: z.boolean(),
   globalShortcutsEnabled: z.boolean(),
@@ -71,6 +71,19 @@ const settingValueSchemas = {
     addedCount: z.number().int().min(0),
     removedCount: z.number().int().min(0),
     updatedCount: z.number().int().min(0),
+    discoveredFileCount: z.number().int().min(0).optional(),
+    warningCount: z.number().int().min(0).optional(),
+    warningDetailLimit: z.number().int().min(0).optional(),
+    durationMs: z.number().int().min(0).optional(),
+    warnings: z
+      .array(
+        z.object({
+          path: z.string().trim().min(1),
+          reason: z.string().trim().min(1)
+        })
+      )
+      .max(100)
+      .optional(),
     scannedAt: z.string().trim().min(1)
   })
 } satisfies Record<z.infer<typeof settingKeySchema>, z.ZodType>

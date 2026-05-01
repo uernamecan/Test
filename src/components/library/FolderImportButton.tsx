@@ -1,5 +1,11 @@
 import { useLibraryStore } from '../../store/libraryStore'
 import { useFeedbackStore } from '../../store/feedbackStore'
+import {
+  buildLibraryImportChangeSummary,
+  buildLibraryImportNoChangeSummary,
+  getLibraryImportWarningAction,
+  hasLibraryImportChanges
+} from '../../lib/libraryImportFeedback'
 
 type FolderImportButtonProps = {
   className?: string
@@ -19,17 +25,19 @@ export default function FolderImportButton({ className }: FolderImportButtonProp
     }
 
     if (result.status === 'failed') {
-      showFeedback('Could not import folders right now.', 'error', null, {
+      showFeedback('Could not import library sources right now.', 'error', null, {
         detail: result.error
       })
       return
     }
 
-    showFeedback('Library import finished.', 'success', null, {
+    const warningAction = getLibraryImportWarningAction(result.stats)
+
+    showFeedback('Library import finished.', 'success', warningAction, {
       detail:
-        result.stats.addedCount > 0 || result.stats.removedCount > 0 || result.stats.updatedCount > 0
-          ? `${result.stats.addedCount} added, ${result.stats.removedCount} removed, ${result.stats.updatedCount} updated. ${result.stats.totalCount} total indexed.`
-          : `${result.stats.totalCount} track${result.stats.totalCount === 1 ? '' : 's'} indexed. No changes found across ${result.selectedCount} selected folder${result.selectedCount === 1 ? '' : 's'}.`
+        hasLibraryImportChanges(result.stats)
+          ? buildLibraryImportChangeSummary(result.stats)
+          : buildLibraryImportNoChangeSummary(result.stats, result.selectedCount, 'folder')
     })
   }
 

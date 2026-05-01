@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import EmptyState from '../../components/common/EmptyState'
 import SearchInput from '../../components/common/SearchInput'
@@ -11,6 +11,7 @@ import { useSaveTracksAsPlaylist } from '../../hooks/useSaveTracksAsPlaylist'
 import { useMinuteTicker } from '../../hooks/useMinuteTicker'
 import { formatCollectionDuration, formatRelativeTime } from '../../lib/format'
 import { buildAlbumSummaries, getAlbumRoute } from '../../lib/library'
+import { shuffleItems } from '../../lib/random'
 import { matchesSearchTerms, normalizeSearchText } from '../../lib/search'
 import { playTrackCommand } from '../../services/playerCommands'
 import { useFeedbackStore } from '../../store/feedbackStore'
@@ -69,6 +70,8 @@ export default function SearchPage() {
   const saveTracksAsPlaylist = useSaveTracksAsPlaylist()
   const [recentSearches, setRecentSearches] = useState<RecentSearchEntry[]>([])
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const deferredSearchKeyword = useDeferredValue(searchKeyword)
+  const searchIsPending = deferredSearchKeyword !== searchKeyword
 
   useEffect(() => {
     if (!ready) {
@@ -188,8 +191,10 @@ export default function SearchPage() {
 
   const results = useMemo(
     () =>
-      tracks.filter((track) => matchesSearchTerms([track.title, track.artist, track.album], searchKeyword)),
-    [searchKeyword, tracks]
+      tracks.filter((track) =>
+        matchesSearchTerms([track.title, track.artist, track.album], deferredSearchKeyword)
+      ),
+    [deferredSearchKeyword, tracks]
   )
   const albumMatches = useMemo(() => buildAlbumSummaries(results), [results])
   const matchedAlbums = albumMatches.slice(0, 3)
@@ -223,14 +228,7 @@ export default function SearchPage() {
       return
     }
 
-    const nextQueue = shuffle ? [...results] : results
-
-    if (shuffle) {
-      for (let index = nextQueue.length - 1; index > 0; index -= 1) {
-        const swapIndex = Math.floor(Math.random() * (index + 1))
-        ;[nextQueue[index], nextQueue[swapIndex]] = [nextQueue[swapIndex], nextQueue[index]]
-      }
-    }
+    const nextQueue = shuffle ? shuffleItems(results) : results
 
     const track = playSelection(nextQueue, 0)
 
@@ -336,6 +334,11 @@ export default function SearchPage() {
         </div>
 
         <div className="mt-5 flex flex-wrap gap-3">
+          {searchIsPending ? (
+            <div className="rounded-2xl border border-aurora/30 bg-aurora/10 px-4 py-3 text-sm text-aurora">
+              Filtering...
+            </div>
+          ) : null}
           {resultStats.map((item) => (
             <div
               key={item.label}

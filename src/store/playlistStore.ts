@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Playlist } from '../types/playlist'
 import { musicApi } from '../services/api'
 import type { Track } from '../types/track'
+import type { PlaylistExportResult, PlaylistImportResult } from '../../electron/types/ipc'
 
 type PlaylistState = {
   playlists: Playlist[]
@@ -21,6 +22,8 @@ type PlaylistState = {
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => Promise<boolean>
   moveTrackInPlaylist: (playlistId: string, trackId: string, targetPosition: number) => Promise<boolean>
   refreshPlaylistCovers: () => Promise<{ checkedCount: number; changedCount: number } | null>
+  exportPlaylistToM3u: (playlistId: string) => Promise<PlaylistExportResult | null>
+  importPlaylistFromM3u: () => Promise<PlaylistImportResult | null>
   deletePlaylist: (playlistId: string) => Promise<boolean>
   syncTrackFavorite: (trackId: string, isFavorite: boolean) => void
   syncTracksWithLibrary: (tracks: Track[]) => void
@@ -153,11 +156,18 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
 
       const added = await musicApi.addTrackToPlaylist(playlistId, trackId)
 
+      if (!added && shouldOptimisticallyAdd) {
+        set({
+          playlistTracks: previousTracks,
+          selectedPlaylist: previousPlaylist
+        })
+      }
+
       if (added) {
         await get().loadPlaylists()
       }
 
-      if (get().selectedPlaylist?.id === playlistId && !shouldOptimisticallyAdd) {
+      if (get().selectedPlaylist?.id === playlistId && (!shouldOptimisticallyAdd || !added)) {
         await get().loadPlaylistDetails(playlistId)
       }
 
@@ -194,7 +204,21 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
         }))
       }
 
-      await musicApi.removeTrackFromPlaylist(playlistId, trackId)
+      const removed = await musicApi.removeTrackFromPlaylist(playlistId, trackId)
+
+      if (!removed) {
+        set({
+          playlistTracks: previousTracks,
+          selectedPlaylist: previousPlaylist
+        })
+
+        if (get().selectedPlaylist?.id === playlistId) {
+          await get().loadPlaylistDetails(playlistId)
+        }
+
+        return false
+      }
+
       await get().loadPlaylists()
 
       return true
@@ -284,11 +308,53 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
       return null
     }
   },
+  exportPlaylistToM3u: async (playlistId) => {
+    set({ error: null })
+
+    try {
+      return await musicApi.exportPlaylistToM3u(playlistId)
+    } catch (error) {
+      set({
+        error: error instanceof Error ? error.message : 'Failed to export playlist.'
+      })
+      return null
+    }
+  },
+  importPlaylistFromM3u: async () => {
+    set({ loading: true, error: null })
+
+    try {
+      const result = await musicApi.importPlaylistFromM3u()
+
+      if (!result) {
+        set({ loading: false })
+        return null
+      }
+
+      await get().loadPlaylists()
+      return result
+    } catch (error) {
+      set({
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to import playlist.'
+      })
+      return null
+    }
+  },
   deletePlaylist: async (playlistId) => {
     set({ loading: true, error: null })
 
     try {
-      await musicApi.deletePlaylist(playlistId)
+      const deleted = await musicApi.deletePlaylist(playlistId)
+
+      if (!deleted) {
+        set({
+          loading: false,
+          error: 'Playlist was not found.'
+        })
+        return false
+      }
+
       const shouldClearSelection = get().selectedPlaylist?.id === playlistId
       await get().loadPlaylists()
 

@@ -152,6 +152,7 @@ export default function AddToPlaylistButton({ trackId, track }: AddToPlaylistBut
             <input
               value={draftName}
               onChange={(event) => setDraftName(event.target.value)}
+              maxLength={80}
               placeholder="New playlist name"
               data-menu-item
               className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500"

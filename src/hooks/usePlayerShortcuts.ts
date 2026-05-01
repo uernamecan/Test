@@ -10,8 +10,6 @@ import { useFeedbackStore } from '../store/feedbackStore'
 import { usePlayerStore } from '../store/playerStore'
 import { useUiStore } from '../store/uiStore'
 
-let lastAudibleVolume = 0.82
-
 function canUseShortcut(eventTarget: EventTarget | null) {
   if (!(eventTarget instanceof HTMLElement)) {
     return true
@@ -49,19 +47,16 @@ function adjustVolumeBy(delta: number) {
 function toggleMute() {
   const state = usePlayerStore.getState()
   const showFeedback = useFeedbackStore.getState().showFeedback
+  const nextVolume = state.toggleMute()
 
-  if (state.volume > 0) {
-    lastAudibleVolume = state.volume
-    state.setVolume(0)
-    playerService.setVolume(0)
+  playerService.setVolume(nextVolume)
+
+  if (nextVolume === 0) {
     showFeedback('Muted.', 'muted')
     return
   }
 
-  const restoredVolume = Math.min(1, Math.max(0.05, lastAudibleVolume || 0.82))
-  state.setVolume(restoredVolume)
-  playerService.setVolume(restoredVolume)
-  showFeedback(`Volume ${Math.round(restoredVolume * 100)}%.`, 'muted')
+  showFeedback(`Volume ${Math.round(nextVolume * 100)}%.`, 'muted')
 }
 
 function cyclePlayMode() {

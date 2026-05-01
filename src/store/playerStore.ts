@@ -7,6 +7,7 @@ type RestorePlayerStatePayload = {
   currentIndex: number
   progress: number
   volume: number
+  lastAudibleVolume: number
   playMode: PlayMode
 }
 
@@ -30,6 +31,7 @@ type PlayerState = {
   currentIndex: number
   isPlaying: boolean
   volume: number
+  lastAudibleVolume: number
   progress: number
   duration: number
   playMode: PlayMode
@@ -37,6 +39,7 @@ type PlayerState = {
   selectQueueIndex: (index: number) => Track | null
   setPlaying: (isPlaying: boolean) => void
   setVolume: (volume: number) => void
+  toggleMute: () => number
   setProgress: (progress: number) => void
   setDuration: (duration: number) => void
   cyclePlayMode: () => void
@@ -90,6 +93,7 @@ function dedupeTracks(tracks: Track[], existingTrackIds: Set<string>) {
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   ...createEmptyPlayerState(),
   volume: 0.82,
+  lastAudibleVolume: 0.82,
   playMode: 'sequence',
   playSelection: (queue, startIndex) => {
     if (queue.length === 0) {
@@ -133,7 +137,33 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     set({ isPlaying })
   },
   setVolume: (volume) => {
-    set({ volume: Math.min(1, Math.max(0, volume)) })
+    const nextVolume = Math.min(1, Math.max(0, volume))
+
+    set((state) => ({
+      volume: nextVolume,
+      lastAudibleVolume: nextVolume > 0 ? nextVolume : state.lastAudibleVolume
+    }))
+  },
+  toggleMute: () => {
+    let nextVolume = 0
+
+    set((state) => {
+      if (state.volume > 0) {
+        return {
+          volume: 0,
+          lastAudibleVolume: state.volume
+        }
+      }
+
+      nextVolume = Math.min(1, Math.max(0.05, state.lastAudibleVolume || 0.82))
+
+      return {
+        volume: nextVolume,
+        lastAudibleVolume: nextVolume
+      }
+    })
+
+    return nextVolume
   },
   setProgress: (progress) => {
     set({ progress: Math.max(0, progress) })
@@ -333,16 +363,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   clearQueue: () => {
     set(createEmptyPlayerState())
   },
-  restorePlayerState: ({ queue, currentIndex, progress, volume, playMode }) => {
+  restorePlayerState: ({ queue, currentIndex, progress, volume, lastAudibleVolume, playMode }) => {
     const { currentIndex: safeIndex, currentTrack } = resolveQueueSelection(queue, currentIndex)
     const nextDuration = currentTrack?.duration ?? 0
+    const safeVolume = Math.min(1, Math.max(0, volume))
+    const safeLastAudibleVolume = Math.min(1, Math.max(0.05, lastAudibleVolume || 0.82))
 
     set({
       queue,
       currentIndex: safeIndex,
       currentTrack,
       isPlaying: false,
-      volume: Math.min(1, Math.max(0, volume)),
+      volume: safeVolume,
+      lastAudibleVolume: safeVolume > 0 ? safeVolume : safeLastAudibleVolume,
       progress: Math.min(Math.max(0, progress), nextDuration),
       duration: nextDuration,
       playMode

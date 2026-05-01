@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import AddToQueueButton from '../../components/library/AddToQueueButton'
 import EmptyState from '../../components/common/EmptyState'
 import SearchInput from '../../components/common/SearchInput'
 import AlbumGrid, { type AlbumSortOption } from '../../components/library/AlbumGrid'
 import FolderImportButton from '../../components/library/FolderImportButton'
+import MusicFileImportButton from '../../components/library/MusicFileImportButton'
 import TrackLibraryActions from '../../components/library/TrackLibraryActions'
 import TrackTable from '../../components/library/TrackTable'
 import { useSaveTracksAsPlaylist } from '../../hooks/useSaveTracksAsPlaylist'
 import { formatCollectionDuration } from '../../lib/format'
+import { shuffleItems } from '../../lib/random'
 import { matchesSearchTerms } from '../../lib/search'
 import { playTrackCommand } from '../../services/playerCommands'
 import { useFeedbackStore } from '../../store/feedbackStore'
@@ -129,6 +131,8 @@ export default function LibraryPage({ mode = 'tracks' }: LibraryPageProps) {
   const sortBy = sortByMode[mode]
   const density = densityByMode[mode]
   const showDensityControl = mode === 'tracks' || mode === 'favorites'
+  const deferredSearchKeyword = useDeferredValue(searchKeyword)
+  const searchIsPending = deferredSearchKeyword !== searchKeyword
 
   const setSortBy = (nextSortBy: LibrarySortOption) => {
     setSortByMode((current) => ({
@@ -144,9 +148,16 @@ export default function LibraryPage({ mode = 'tracks' }: LibraryPageProps) {
     }))
   }
 
-  const scopedTracks = mode === 'favorites' ? tracks.filter((track) => track.isFavorite) : tracks
-  const filteredTracks = scopedTracks.filter((track) =>
-    matchesSearchTerms([track.title, track.artist, track.album], searchKeyword)
+  const scopedTracks = useMemo(
+    () => (mode === 'favorites' ? tracks.filter((track) => track.isFavorite) : tracks),
+    [mode, tracks]
+  )
+  const filteredTracks = useMemo(
+    () =>
+      scopedTracks.filter((track) =>
+        matchesSearchTerms([track.title, track.artist, track.album], deferredSearchKeyword)
+      ),
+    [deferredSearchKeyword, scopedTracks]
   )
   const sortedTracks = useMemo(
     () =>
@@ -246,8 +257,13 @@ export default function LibraryPage({ mode = 'tracks' }: LibraryPageProps) {
       ? {
           title: 'No Music Imported Yet',
           description:
-            'Import a local folder first. After the scan finishes, tracks and albums will appear here.',
-          action: <FolderImportButton className="mx-auto" />
+            'Import a local folder or audio files first. After the scan finishes, tracks and albums will appear here.',
+          action: (
+            <div className="flex flex-wrap justify-center gap-3">
+              <FolderImportButton />
+              <MusicFileImportButton />
+            </div>
+          )
         }
       : mode === 'favorites' && scopedTracks.length === 0
         ? {
@@ -271,14 +287,7 @@ export default function LibraryPage({ mode = 'tracks' }: LibraryPageProps) {
       return
     }
 
-    const nextQueue = shuffle ? [...actionTracks] : actionTracks
-
-    if (shuffle) {
-      for (let index = nextQueue.length - 1; index > 0; index -= 1) {
-        const swapIndex = Math.floor(Math.random() * (index + 1))
-        ;[nextQueue[index], nextQueue[swapIndex]] = [nextQueue[swapIndex], nextQueue[index]]
-      }
-    }
+    const nextQueue = shuffle ? shuffleItems(actionTracks) : actionTracks
 
     const track = playSelection(nextQueue, 0)
 
@@ -335,7 +344,10 @@ export default function LibraryPage({ mode = 'tracks' }: LibraryPageProps) {
             </div>
           ) : null}
         </div>
-        <FolderImportButton />
+        <div className="flex flex-wrap gap-3">
+          <FolderImportButton />
+          <MusicFileImportButton />
+        </div>
       </section>
 
       <div className={`grid gap-4 ${showDensityControl ? 'lg:grid-cols-[minmax(0,1fr)_220px_180px_220px]' : 'lg:grid-cols-[minmax(0,1fr)_220px_220px]'}`}>
@@ -376,7 +388,7 @@ export default function LibraryPage({ mode = 'tracks' }: LibraryPageProps) {
           </label>
         ) : null}
         <div className="rounded-2xl border border-white/10 bg-slate-950/55 px-4 py-3 text-sm text-slate-300">
-          {filteredTracks.length} results / {activeSortLabel}
+          {searchIsPending ? 'Filtering...' : `${filteredTracks.length} results / ${activeSortLabel}`}
         </div>
       </div>
 

@@ -62,6 +62,7 @@ export default function TrackTable({
   const duration = usePlayerStore((state) => state.duration)
   const setProgress = usePlayerStore((state) => state.setProgress)
   const setVolume = usePlayerStore((state) => state.setVolume)
+  const toggleMute = usePlayerStore((state) => state.toggleMute)
   const cyclePlayMode = usePlayerStore((state) => state.cyclePlayMode)
   const lyricsVisible = useUiStore((state) => state.lyricsVisible)
   const queueVisible = useUiStore((state) => state.queueVisible)
@@ -83,7 +84,6 @@ export default function TrackTable({
   const hasActions = Boolean(renderActions)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const rowRefs = useRef<Array<HTMLDivElement | null>>([])
-  const lastAudibleVolumeRef = useRef(volume > 0 ? volume : 0.82)
   const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null)
   const [selectedIndexHint, setSelectedIndexHint] = useState(0)
   const [keyboardFocused, setKeyboardFocused] = useState(false)
@@ -258,6 +258,7 @@ export default function TrackTable({
   const handleAdjustVolume = (delta: number) => {
     const nextVolume = Math.min(1, Math.max(0, volume + delta))
     setVolume(nextVolume)
+    playerService.setVolume(nextVolume)
     showFeedback(`Volume ${Math.round(nextVolume * 100)}%.`, 'muted')
   }
 
@@ -275,16 +276,15 @@ export default function TrackTable({
   }
 
   const handleToggleMute = () => {
-    if (volume > 0) {
-      lastAudibleVolumeRef.current = volume
-      setVolume(0)
+    const nextVolume = toggleMute()
+    playerService.setVolume(nextVolume)
+
+    if (nextVolume === 0) {
       showFeedback('Muted.', 'muted')
       return
     }
 
-    const restoredVolume = Math.min(1, Math.max(0.05, lastAudibleVolumeRef.current || 0.82))
-    setVolume(restoredVolume)
-    showFeedback(`Volume ${Math.round(restoredVolume * 100)}%.`, 'muted')
+    showFeedback(`Volume ${Math.round(nextVolume * 100)}%.`, 'muted')
   }
 
   const handleOpenSelectedTrackFolder = async (track: Track) => {
@@ -420,12 +420,6 @@ export default function TrackTable({
       })
     }
   }, [resolvedSelectedIndex])
-
-  useEffect(() => {
-    if (volume > 0) {
-      lastAudibleVolumeRef.current = volume
-    }
-  }, [volume])
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (tracks.length === 0) {

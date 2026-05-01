@@ -10,6 +10,7 @@ import CoverArtwork from '../../components/player/CoverArtwork'
 import { useSaveTracksAsPlaylist } from '../../hooks/useSaveTracksAsPlaylist'
 import { formatCollectionDuration, formatDuration, formatLibraryTimestamp, formatTrackMeta } from '../../lib/format'
 import { decodeLibraryParam, findAlbumTracks } from '../../lib/library'
+import { shuffleItems } from '../../lib/random'
 import { matchesSearchTerms } from '../../lib/search'
 import { playTrackCommand } from '../../services/playerCommands'
 import { useFeedbackStore } from '../../store/feedbackStore'
@@ -86,14 +87,7 @@ export default function AlbumDetailPage() {
       return
     }
 
-    const nextQueue = shuffle ? [...filteredAlbumTracks] : filteredAlbumTracks
-
-    if (shuffle) {
-      for (let index = nextQueue.length - 1; index > 0; index -= 1) {
-        const swapIndex = Math.floor(Math.random() * (index + 1))
-        ;[nextQueue[index], nextQueue[swapIndex]] = [nextQueue[swapIndex], nextQueue[index]]
-      }
-    }
+    const nextQueue = shuffle ? shuffleItems(filteredAlbumTracks) : filteredAlbumTracks
 
     const nextTrack = playSelection(nextQueue, 0)
 

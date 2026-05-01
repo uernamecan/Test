@@ -4,11 +4,25 @@ import type { AppCommand, MusicAPI } from './types/ipc'
 
 const api: MusicAPI = {
   selectFolders: () => ipcRenderer.invoke('music:selectFolders'),
+  selectAudioFiles: () => ipcRenderer.invoke('music:selectAudioFiles'),
   scanLibrary: (paths) => ipcRenderer.invoke('music:scanLibrary', paths),
+  getLibrarySourceInfo: (paths) => ipcRenderer.invoke('music:getLibrarySourceInfo', paths),
   getAllTracks: () => ipcRenderer.invoke('music:getAllTracks'),
   searchTracks: (keyword) => ipcRenderer.invoke('music:searchTracks', keyword),
   showTrackInFolder: (trackPath) => ipcRenderer.invoke('music:showTrackInFolder', trackPath),
   openTrackFile: (trackPath) => ipcRenderer.invoke('music:openTrackFile', trackPath),
+  showLibrarySourceInFolder: (sourcePath) =>
+    ipcRenderer.invoke('music:showLibrarySourceInFolder', sourcePath),
+  openLibrarySourcePath: (sourcePath) =>
+    ipcRenderer.invoke('music:openLibrarySourcePath', sourcePath),
+  getAppStorageInfo: () => ipcRenderer.invoke('music:getAppStorageInfo'),
+  openAppStorageFolder: () => ipcRenderer.invoke('music:openAppStorageFolder'),
+  backupDatabase: () => ipcRenderer.invoke('music:backupDatabase'),
+  checkDatabaseHealth: () => ipcRenderer.invoke('music:checkDatabaseHealth'),
+  optimizeDatabase: () => ipcRenderer.invoke('music:optimizeDatabase'),
+  cleanupArtworkCache: () => ipcRenderer.invoke('music:cleanupArtworkCache'),
+  exportDiagnosticsReport: () => ipcRenderer.invoke('music:exportDiagnosticsReport'),
+  exportLibraryCsv: () => ipcRenderer.invoke('music:exportLibraryCsv'),
   setTrackFavorite: (trackId, isFavorite) =>
     ipcRenderer.invoke('music:setTrackFavorite', { trackId, isFavorite }),
   getLyrics: (lyricPath) => ipcRenderer.invoke('music:getLyrics', lyricPath),
@@ -16,6 +30,7 @@ const api: MusicAPI = {
   addHistoryEntry: (trackId) => ipcRenderer.invoke('history:addEntry', trackId),
   clearHistory: () => ipcRenderer.invoke('history:clear'),
   removeHistoryEntry: (historyId) => ipcRenderer.invoke('history:removeEntry', historyId),
+  removeTrackHistory: (trackId) => ipcRenderer.invoke('history:removeTrack', trackId),
   createPlaylist: (name) => ipcRenderer.invoke('playlist:create', name),
   createPlaylistWithTracks: (name, trackIds) =>
     ipcRenderer.invoke('playlist:createWithTracks', { name, trackIds }),
@@ -30,6 +45,8 @@ const api: MusicAPI = {
   moveTrackInPlaylist: (playlistId, trackId, targetPosition) =>
     ipcRenderer.invoke('playlist:moveTrack', { playlistId, trackId, targetPosition }),
   refreshPlaylistCovers: () => ipcRenderer.invoke('playlist:refreshCovers'),
+  exportPlaylistToM3u: (playlistId) => ipcRenderer.invoke('playlist:exportM3u', playlistId),
+  importPlaylistFromM3u: () => ipcRenderer.invoke('playlist:importM3u'),
   deletePlaylist: (playlistId) => ipcRenderer.invoke('playlist:delete', playlistId),
   getSettings: () => ipcRenderer.invoke('settings:getAll'),
   setSetting: (key, value) => ipcRenderer.invoke('settings:set', key, value),

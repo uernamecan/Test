@@ -3,6 +3,8 @@ import { useFeedbackStore } from '../store/feedbackStore'
 import { usePlaylistStore } from '../store/playlistStore'
 import type { Track } from '../types/track'
 
+const MAX_PLAYLIST_NAME_LENGTH = 80
+
 type SaveTracksAsPlaylistOptions = {
   tracks: Track[]
   defaultName: string
@@ -30,16 +32,25 @@ export function useSaveTracksAsPlaylist() {
       return null
     }
 
-    const playlistName = window.prompt(promptMessage, defaultName)?.trim()
+    const playlistName = window
+      .prompt(promptMessage, defaultName.trim().slice(0, MAX_PLAYLIST_NAME_LENGTH))
+      ?.trim()
 
     if (!playlistName) {
+      return null
+    }
+
+    if (playlistName.length > MAX_PLAYLIST_NAME_LENGTH) {
+      showFeedback(`Playlist names can be up to ${MAX_PLAYLIST_NAME_LENGTH} characters.`, 'muted')
       return null
     }
 
     const result = await createPlaylistFromTracks(playlistName, tracks)
 
     if (!result) {
-      showFeedback(failureMessage, 'error')
+      showFeedback(failureMessage, 'error', null, {
+        detail: usePlaylistStore.getState().error
+      })
       return null
     }
 

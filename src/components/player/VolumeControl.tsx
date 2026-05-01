@@ -1,10 +1,12 @@
 type VolumeControlProps = {
   volume: number
   onChange: (nextVolume: number) => void
+  onToggleMute: () => void
 }
 
-export default function VolumeControl({ volume, onChange }: VolumeControlProps) {
+export default function VolumeControl({ volume, onChange, onToggleMute }: VolumeControlProps) {
   const volumePercent = Math.round(volume * 100)
+  const muted = volumePercent === 0
 
   return (
     <section className="w-full min-w-0 rounded-3xl border border-white/10 bg-white/[0.04] px-4 py-3 sm:min-w-[220px] sm:flex-1">
@@ -13,9 +15,18 @@ export default function VolumeControl({ volume, onChange }: VolumeControlProps) 
           <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Volume</div>
           <div className="mt-1 text-xs text-slate-300">Dial in the room without leaving the player.</div>
         </div>
-        <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200">
-          {volumePercent}%
-        </div>
+        <button
+          type="button"
+          onClick={onToggleMute}
+          aria-pressed={muted}
+          className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] transition ${
+            muted
+              ? 'border-rose-300/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20'
+              : 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
+          }`}
+        >
+          {muted ? 'Muted' : `${volumePercent}%`}
+        </button>
       </div>
 
       <div className="mt-4 flex items-center gap-3">

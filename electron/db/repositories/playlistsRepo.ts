@@ -371,7 +371,7 @@ export function getPlaylistTracks(playlistId: string) {
 export function removeTrackFromPlaylist(playlistId: string, trackId: string) {
   const database = getDatabase()
   const transaction = database.transaction(() => {
-    database
+    const deleteResult = database
       .prepare(
         `
         DELETE FROM playlist_tracks
@@ -379,6 +379,10 @@ export function removeTrackFromPlaylist(playlistId: string, trackId: string) {
       `
       )
       .run(playlistId, trackId)
+
+    if (deleteResult.changes === 0) {
+      return false
+    }
 
     const rows = database
       .prepare(
@@ -414,9 +418,11 @@ export function removeTrackFromPlaylist(playlistId: string, trackId: string) {
       `
       )
       .run(new Date().toISOString(), playlistId)
+
+    return true
   })
 
-  transaction()
+  return transaction()
 }
 
 export function moveTrackInPlaylist(playlistId: string, trackId: string, targetPosition: number) {
@@ -491,7 +497,7 @@ export function deletePlaylist(playlistId: string) {
       )
       .run(playlistId)
 
-    database
+    const deleteResult = database
       .prepare(
         `
         DELETE FROM playlists
@@ -499,7 +505,9 @@ export function deletePlaylist(playlistId: string) {
       `
       )
       .run(playlistId)
+
+    return deleteResult.changes > 0
   })
 
-  transaction()
+  return transaction()
 }

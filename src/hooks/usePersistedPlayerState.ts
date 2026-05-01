@@ -17,6 +17,7 @@ function buildPlayerSnapshot() {
     currentIndex: state.currentIndex,
     progress: state.progress,
     volume: state.volume,
+    lastAudibleVolume: state.lastAudibleVolume,
     playMode: state.playMode
   }
 }
@@ -31,6 +32,7 @@ export function usePersistedPlayerState() {
   const currentIndex = usePlayerStore((state) => state.currentIndex)
   const currentTrackId = usePlayerStore((state) => state.currentTrack?.id)
   const volume = usePlayerStore((state) => state.volume)
+  const lastAudibleVolume = usePlayerStore((state) => state.lastAudibleVolume)
   const playMode = usePlayerStore((state) => state.playMode)
   const isPlaying = usePlayerStore((state) => state.isPlaying)
   const restoredRef = useRef(false)
@@ -69,6 +71,7 @@ export function usePersistedPlayerState() {
       currentIndex: nextIndex,
       progress: persistedState.progress,
       volume: persistedState.volume,
+      lastAudibleVolume: persistedState.lastAudibleVolume,
       playMode: persistedState.playMode
     })
 
@@ -87,7 +90,7 @@ export function usePersistedPlayerState() {
     }
 
     void setSetting(PLAYER_STATE_KEY, buildPlayerSnapshot())
-  }, [currentIndex, currentTrackId, playMode, queue, setSetting, settingsReady, volume])
+  }, [currentIndex, currentTrackId, lastAudibleVolume, playMode, queue, setSetting, settingsReady, volume])
 
   useEffect(() => {
     if (!settingsReady || !restoredRef.current || isPlaying) {

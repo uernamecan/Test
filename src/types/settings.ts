@@ -12,6 +12,7 @@ export interface PersistedPlayerState {
   currentIndex: number
   progress: number
   volume: number
+  lastAudibleVolume: number
   playMode: PlayMode
 }
 
@@ -48,6 +49,14 @@ export interface PersistedLibraryScanState {
   addedCount: number
   removedCount: number
   updatedCount: number
+  discoveredFileCount?: number
+  warningCount?: number
+  warningDetailLimit?: number
+  durationMs?: number
+  warnings?: Array<{
+    path: string
+    reason: string
+  }>
   scannedAt: string
 }
 
@@ -118,6 +127,13 @@ export function resolvePersistedPlayerState(value: unknown): PersistedPlayerStat
   const volume =
     typeof candidate.volume === 'number' && Number.isFinite(candidate.volume) ? candidate.volume : 0.82
 
+  const lastAudibleVolume =
+    typeof candidate.lastAudibleVolume === 'number' && Number.isFinite(candidate.lastAudibleVolume)
+      ? candidate.lastAudibleVolume
+      : volume > 0
+        ? volume
+        : 0.82
+
   const playMode =
     typeof candidate.playMode === 'string' && PLAY_MODES.includes(candidate.playMode as PlayMode)
       ? candidate.playMode
@@ -129,6 +145,7 @@ export function resolvePersistedPlayerState(value: unknown): PersistedPlayerStat
     currentIndex,
     progress,
     volume,
+    lastAudibleVolume,
     playMode
   }
 }
@@ -267,6 +284,30 @@ export function resolvePersistedLibraryScanState(value: unknown): PersistedLibra
     addedCount: Math.max(0, Math.floor(candidate.addedCount)),
     removedCount: Math.max(0, Math.floor(candidate.removedCount)),
     updatedCount: Math.max(0, Math.floor(candidate.updatedCount)),
+    discoveredFileCount:
+      typeof candidate.discoveredFileCount === 'number'
+        ? Math.max(0, Math.floor(candidate.discoveredFileCount))
+        : undefined,
+    warningCount:
+      typeof candidate.warningCount === 'number'
+        ? Math.max(0, Math.floor(candidate.warningCount))
+        : undefined,
+    warningDetailLimit:
+      typeof candidate.warningDetailLimit === 'number'
+        ? Math.max(0, Math.floor(candidate.warningDetailLimit))
+        : undefined,
+    durationMs:
+      typeof candidate.durationMs === 'number'
+        ? Math.max(0, Math.floor(candidate.durationMs))
+        : undefined,
+    warnings: Array.isArray(candidate.warnings)
+      ? candidate.warnings
+          .filter(
+            (warning): warning is { path: string; reason: string } =>
+              typeof warning?.path === 'string' && typeof warning.reason === 'string'
+          )
+          .slice(0, 20)
+      : undefined,
     scannedAt:
       typeof candidate.scannedAt === 'string' && candidate.scannedAt.length > 0
         ? candidate.scannedAt

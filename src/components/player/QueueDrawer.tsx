@@ -135,6 +135,11 @@ export default function QueueDrawer() {
 
       if (event.key === 'Escape' && document.activeElement === searchInputRef.current) {
         setFilterKeyword('')
+        return
+      }
+
+      if (event.key === 'Escape' && !isTypingTarget) {
+        toggleQueue()
       }
     }
 
@@ -143,7 +148,7 @@ export default function QueueDrawer() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [queueVisible])
+  }, [queueVisible, toggleQueue])
 
   useEffect(() => {
     if (!queueVisible || !currentTrackRef.current) {

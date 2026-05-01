@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { app, BrowserWindow } from 'electron'
-import { initDatabase } from './db/client'
+import { closeDatabase, initDatabase } from './db/client'
 import { registerMusicIpcHandlers } from './ipc/music'
 import { registerSettingsIpcHandlers } from './ipc/settings'
 import { registerWindowIpcHandlers } from './ipc/window'
@@ -11,6 +11,7 @@ import { logger } from './utils/logger'
 let mainWindow: BrowserWindow | null = null
 const desktopController = createDesktopController()
 const windowStateManager = createWindowStateManager()
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
 
 function createMainWindow() {
   const { windowOptions, isMaximized } = windowStateManager.getLaunchState()
@@ -66,18 +67,29 @@ async function bootstrap() {
   logger.info('Application bootstrapped')
 }
 
-app.whenReady().then(() => {
-  void bootstrap()
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      mainWindow = createMainWindow()
-      desktopController.bindWindow(mainWindow)
-    }
-
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
     desktopController.showWindow()
   })
-})
+
+  app.whenReady().then(() => {
+    void bootstrap().catch((error) => {
+      logger.error('Application bootstrap failed:', error)
+      app.quit()
+    })
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        mainWindow = createMainWindow()
+        desktopController.bindWindow(mainWindow)
+      }
+
+      desktopController.showWindow()
+    })
+  })
+}
 
 app.on('before-quit', () => {
   desktopController.markQuitting()
@@ -85,6 +97,7 @@ app.on('before-quit', () => {
 
 app.on('will-quit', () => {
   desktopController.dispose()
+  closeDatabase()
 })
 
 app.on('window-all-closed', () => {

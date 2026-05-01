@@ -53,5 +53,7 @@ CREATE TABLE IF NOT EXISTS favorite_tracks (
 CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks (artist);
 CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks (album);
 CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks (playlist_id, position);
+CREATE INDEX IF NOT EXISTS idx_playlist_tracks_track ON playlist_tracks (track_id);
+CREATE INDEX IF NOT EXISTS idx_history_track ON history (track_id);
 CREATE INDEX IF NOT EXISTS idx_history_played_at ON history (played_at DESC);
 CREATE INDEX IF NOT EXISTS idx_favorite_tracks_created_at ON favorite_tracks (created_at DESC);

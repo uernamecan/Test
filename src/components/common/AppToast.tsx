@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useFeedbackStore } from '../../store/feedbackStore'
 
 const TOAST_DURATION_MS = 2200
+const ACTION_TOAST_DURATION_MS = 5600
 
 export default function AppToast() {
   const message = useFeedbackStore((state) => state.message)
@@ -16,20 +17,21 @@ export default function AppToast() {
       return
     }
 
+    const duration = action || detail ? ACTION_TOAST_DURATION_MS : TOAST_DURATION_MS
     const timer = window.setTimeout(() => {
       clearFeedback()
-    }, TOAST_DURATION_MS)
+    }, duration)
 
     return () => {
       window.clearTimeout(timer)
     }
-  }, [clearFeedback, message, version])
+  }, [action, clearFeedback, detail, message, version])
 
   return (
     <div className="pointer-events-none absolute bottom-28 left-1/2 z-40 -translate-x-1/2">
       {message ? (
         <div
-          className={`min-w-[260px] rounded-2xl border px-4 py-3 text-sm shadow-soft backdrop-blur-xl transition ${
+          className={`w-[min(92vw,560px)] rounded-2xl border px-4 py-3 text-sm shadow-soft backdrop-blur-xl transition ${
             tone === 'success'
               ? 'border-aurora/30 bg-slate-950/92 text-white'
               : tone === 'error'
@@ -40,20 +42,30 @@ export default function AppToast() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div>{message}</div>
-              {detail ? <div className="mt-1 text-xs text-slate-400">{detail}</div> : null}
+              {detail ? <div className="mt-1 break-all text-xs text-slate-400">{detail}</div> : null}
             </div>
-            {action ? (
+            <div className="flex shrink-0 items-center gap-2">
+              {action ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearFeedback()
+                    action.onAction()
+                  }}
+                  className="pointer-events-auto rounded-xl border border-white/10 bg-white/5 px-3 py-1 text-xs text-white transition hover:bg-white/10"
+                >
+                  {action.label}
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={() => {
-                  clearFeedback()
-                  action.onAction()
-                }}
-                className="pointer-events-auto shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 py-1 text-xs text-white transition hover:bg-white/10"
+                aria-label="Dismiss notification"
+                onClick={clearFeedback}
+                className="pointer-events-auto rounded-xl border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-slate-300 transition hover:bg-white/10 hover:text-white"
               >
-                {action.label}
+                Close
               </button>
-            ) : null}
+            </div>
           </div>
         </div>
       ) : null}

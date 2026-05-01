@@ -7,16 +7,39 @@ import { usePlayerStore } from './playerStore'
 import { usePlaylistStore } from './playlistStore'
 import { useHistoryStore } from './historyStore'
 import { resolveAppSettings } from '../types/settings'
+import { mergeLibrarySources } from '../lib/librarySources'
 
 type LibraryScanStats = {
   totalCount: number
   addedCount: number
   removedCount: number
   updatedCount: number
+  discoveredFileCount?: number
+  warningCount?: number
+  warningDetailLimit?: number
+  durationMs?: number
+  warnings?: Array<{
+    path: string
+    reason: string
+  }>
   scannedAt?: string
 }
 
 type ImportFoldersResult =
+  | {
+      status: 'cancelled'
+    }
+  | {
+      status: 'completed'
+      selectedCount: number
+      stats: LibraryScanStats
+    }
+  | {
+      status: 'failed'
+      error: string
+    }
+
+type ImportAudioFilesResult =
   | {
       status: 'cancelled'
     }
@@ -40,6 +63,7 @@ type LibraryState = {
   loadTracks: () => Promise<void>
   scanFolders: (paths: string[]) => Promise<void>
   importFolders: () => Promise<ImportFoldersResult>
+  importAudioFiles: () => Promise<ImportAudioFilesResult>
   setSearchKeyword: (keyword: string) => void
   syncTrackFavorite: (trackId: string, isFavorite: boolean) => void
 }
@@ -124,7 +148,42 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     }
 
     const existingPaths = resolveAppSettings(useSettingsStore.getState().settings).libraryPaths
-    const nextPaths = [...new Set([...existingPaths, ...selectedPaths])]
+    const nextPaths = mergeLibrarySources(existingPaths, selectedPaths)
+
+    await get().scanFolders(nextPaths)
+
+    const error = get().error
+
+    if (error) {
+      return {
+        status: 'failed',
+        error
+      }
+    }
+
+    return {
+      status: 'completed',
+      selectedCount: selectedPaths.length,
+      stats: get().lastScanStats ?? {
+        totalCount: get().tracks.length,
+        addedCount: 0,
+        removedCount: 0,
+        updatedCount: 0,
+        scannedAt: new Date().toISOString()
+      }
+    }
+  },
+  importAudioFiles: async () => {
+    const selectedPaths = await musicApi.selectAudioFiles()
+
+    if (selectedPaths.length === 0) {
+      return {
+        status: 'cancelled'
+      }
+    }
+
+    const existingPaths = resolveAppSettings(useSettingsStore.getState().settings).libraryPaths
+    const nextPaths = mergeLibrarySources(existingPaths, selectedPaths)
 
     await get().scanFolders(nextPaths)
 

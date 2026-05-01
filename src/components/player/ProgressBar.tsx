@@ -10,6 +10,7 @@ export default function ProgressBar({ progress, duration, onSeek }: ProgressBarP
   const safeDuration = Math.max(duration, 1)
   const safeProgress = Math.min(progress, duration || 0)
   const progressPercent = Math.min((safeProgress / safeDuration) * 100, 100)
+  const disabled = duration <= 0
 
   return (
     <div className="grid gap-2">
@@ -31,8 +32,10 @@ export default function ProgressBar({ progress, duration, onSeek }: ProgressBarP
             max={safeDuration}
             step={0.1}
             value={safeProgress}
+            disabled={disabled}
             onChange={(event) => onSeek(Number(event.target.value))}
-            className="player-range relative h-3 w-full cursor-pointer appearance-none bg-transparent"
+            className="player-range relative h-3 w-full cursor-pointer appearance-none bg-transparent disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Playback progress"
           />
         </div>
         <span className="w-12 font-medium text-slate-200">{formatDuration(duration)}</span>

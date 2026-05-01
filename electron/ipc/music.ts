@@ -1,5 +1,5 @@
 import { dialog, ipcMain, shell } from 'electron'
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, promises as fsPromises, statSync } from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
 import { setTrackFavorite } from '../db/repositories/favoritesRepo'
@@ -20,13 +20,26 @@ import {
   addHistoryEntry,
   clearHistory,
   getRecentHistory,
-  removeHistoryEntry
+  removeHistoryEntry,
+  removeTrackHistory
 } from '../db/repositories/historyRepo'
+import { getDatabase } from '../db/client'
 import { getAllTracks, searchTracks } from '../db/repositories/tracksRepo'
 import { syncLibrary } from '../services/library'
 import { parseLyricsFile } from '../services/lyrics'
+import { readM3uPlaylistPaths, writeM3uPlaylist } from '../services/m3u'
+import {
+  buildDiagnosticsReport,
+  buildLibraryCsv,
+  checkDatabaseHealth,
+  cleanupArtworkCache,
+  getAppStorageInfo,
+  getLibrarySourceInfo,
+  optimizeDatabase
+} from '../services/maintenance'
+import { resolveUserDataPath } from '../utils/paths'
 
-const folderPathsSchema = z.array(z.string().min(1)).max(50)
+const librarySourcePathsSchema = z.array(z.string().min(1)).max(1000)
 const playlistNameSchema = z.string().trim().min(1).max(80)
 const keywordSchema = z.string().trim()
 const filePathSchema = z.string().trim().min(1).max(4096)
@@ -52,7 +65,51 @@ const lyricPathSchema = filePathSchema.refine(
   (filePath) => path.extname(filePath).toLowerCase() === '.lrc',
   'Lyrics must be loaded from a .lrc file.'
 )
+const m3uPathSchema = filePathSchema.refine(
+  (filePath) => ['.m3u', '.m3u8'].includes(path.extname(filePath).toLowerCase()),
+  'Playlist files must use .m3u or .m3u8.'
+)
 const historyLimitSchema = z.number().int().min(1).max(50)
+
+function sanitizeFileName(name: string) {
+  return name
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120) || 'playlist'
+}
+
+function ensureM3uExtension(filePath: string) {
+  const extension = path.extname(filePath).toLowerCase()
+
+  if (extension === '.m3u' || extension === '.m3u8') {
+    return filePath
+  }
+
+  return `${filePath}.m3u8`
+}
+
+function ensureSqliteBackupExtension(filePath: string) {
+  const extension = path.extname(filePath).toLowerCase()
+
+  if (extension === '.db' || extension === '.sqlite' || extension === '.sqlite3') {
+    return filePath
+  }
+
+  return `${filePath}.db`
+}
+
+function getBackupTimestamp() {
+  return new Date().toISOString().replace(/[:.]/g, '-')
+}
+
+function ensureJsonExtension(filePath: string) {
+  return path.extname(filePath).toLowerCase() === '.json' ? filePath : `${filePath}.json`
+}
+
+function ensureCsvExtension(filePath: string) {
+  return path.extname(filePath).toLowerCase() === '.csv' ? filePath : `${filePath}.csv`
+}
 
 function parseExistingFilePath(filePath: unknown) {
   const parsedPath = filePathSchema.parse(filePath)
@@ -68,8 +125,22 @@ function parseExistingFilePath(filePath: unknown) {
   return parsedPath
 }
 
+function parseExistingPath(filePath: unknown) {
+  const parsedPath = filePathSchema.parse(filePath)
+
+  if (!existsSync(parsedPath)) {
+    throw new Error('The requested path no longer exists on disk.')
+  }
+
+  return parsedPath
+}
+
 function parseExistingLyricPath(filePath: unknown) {
   return lyricPathSchema.parse(parseExistingFilePath(filePath))
+}
+
+function parseExistingM3uPath(filePath: unknown) {
+  return m3uPathSchema.parse(parseExistingFilePath(filePath))
 }
 
 export function registerMusicIpcHandlers() {
@@ -82,9 +153,29 @@ export function registerMusicIpcHandlers() {
     return result.canceled ? [] : result.filePaths
   })
 
+  ipcMain.handle('music:selectAudioFiles', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile', 'multiSelections'],
+      title: 'Select audio files',
+      filters: [
+        {
+          name: 'Audio Files',
+          extensions: ['mp3', 'flac', 'wav', 'm4a', 'ogg']
+        }
+      ]
+    })
+
+    return result.canceled ? [] : result.filePaths
+  })
+
   ipcMain.handle('music:scanLibrary', async (_event, paths) => {
-    const folderPaths = folderPathsSchema.parse(paths)
-    return syncLibrary(folderPaths)
+    const sourcePaths = librarySourcePathsSchema.parse(paths)
+    return syncLibrary(sourcePaths)
+  })
+
+  ipcMain.handle('music:getLibrarySourceInfo', async (_event, paths) => {
+    const sourcePaths = librarySourcePathsSchema.parse(paths)
+    return sourcePaths.map(getLibrarySourceInfo)
   })
 
   ipcMain.handle('music:getAllTracks', async () => {
@@ -108,6 +199,128 @@ export function registerMusicIpcHandlers() {
     }
 
     return true
+  })
+
+  ipcMain.handle('music:showLibrarySourceInFolder', async (_event, sourcePath) => {
+    shell.showItemInFolder(parseExistingPath(sourcePath))
+    return true
+  })
+
+  ipcMain.handle('music:openLibrarySourcePath', async (_event, sourcePath) => {
+    const errorMessage = await shell.openPath(parseExistingPath(sourcePath))
+
+    if (errorMessage) {
+      throw new Error(errorMessage)
+    }
+
+    return true
+  })
+
+  ipcMain.handle('music:getAppStorageInfo', async () => {
+    return getAppStorageInfo()
+  })
+
+  ipcMain.handle('music:openAppStorageFolder', async () => {
+    const errorMessage = await shell.openPath(resolveUserDataPath())
+
+    if (errorMessage) {
+      throw new Error(errorMessage)
+    }
+
+    return true
+  })
+
+  ipcMain.handle('music:backupDatabase', async () => {
+    const result = await dialog.showSaveDialog({
+      title: 'Back up music database',
+      defaultPath: `pulselocal-backup-${getBackupTimestamp()}.db`,
+      filters: [
+        {
+          name: 'SQLite Database',
+          extensions: ['db', 'sqlite', 'sqlite3']
+        }
+      ]
+    })
+
+    if (result.canceled || !result.filePath) {
+      return null
+    }
+
+    const filePath = ensureSqliteBackupExtension(result.filePath)
+
+    await getDatabase().backup(filePath)
+
+    return {
+      filePath,
+      sizeBytes: existsSync(filePath) ? statSync(filePath).size : 0
+    }
+  })
+
+  ipcMain.handle('music:checkDatabaseHealth', async () => {
+    return checkDatabaseHealth()
+  })
+
+  ipcMain.handle('music:optimizeDatabase', async () => {
+    return optimizeDatabase()
+  })
+
+  ipcMain.handle('music:cleanupArtworkCache', async () => {
+    return cleanupArtworkCache()
+  })
+
+  ipcMain.handle('music:exportDiagnosticsReport', async () => {
+    const result = await dialog.showSaveDialog({
+      title: 'Export diagnostics report',
+      defaultPath: `pulselocal-diagnostics-${getBackupTimestamp()}.json`,
+      filters: [
+        {
+          name: 'JSON Report',
+          extensions: ['json']
+        }
+      ]
+    })
+
+    if (result.canceled || !result.filePath) {
+      return null
+    }
+
+    const filePath = ensureJsonExtension(result.filePath)
+    const report = buildDiagnosticsReport()
+
+    await fsPromises.writeFile(filePath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
+
+    return {
+      filePath,
+      sizeBytes: existsSync(filePath) ? statSync(filePath).size : 0
+    }
+  })
+
+  ipcMain.handle('music:exportLibraryCsv', async () => {
+    const result = await dialog.showSaveDialog({
+      title: 'Export library CSV',
+      defaultPath: `pulselocal-library-${getBackupTimestamp()}.csv`,
+      filters: [
+        {
+          name: 'CSV File',
+          extensions: ['csv']
+        }
+      ]
+    })
+
+    if (result.canceled || !result.filePath) {
+      return null
+    }
+
+    const filePath = ensureCsvExtension(result.filePath)
+    const csv = buildLibraryCsv()
+
+    await fsPromises.writeFile(filePath, `${csv}\n`, 'utf8')
+
+    return {
+      filePath,
+      sizeBytes: existsSync(filePath) ? statSync(filePath).size : 0,
+      trackCount: getAllTracks().length
+    }
   })
 
   ipcMain.handle('music:setTrackFavorite', async (_event, payload) => {
@@ -134,6 +347,10 @@ export function registerMusicIpcHandlers() {
 
   ipcMain.handle('history:removeEntry', async (_event, historyId) => {
     return removeHistoryEntry(historyIdSchema.parse(historyId))
+  })
+
+  ipcMain.handle('history:removeTrack', async (_event, trackId) => {
+    return removeTrackHistory(trackIdSchema.parse(trackId))
   })
 
   ipcMain.handle('playlist:create', async (_event, name) => {
@@ -175,7 +392,7 @@ export function registerMusicIpcHandlers() {
 
   ipcMain.handle('playlist:removeTrack', async (_event, payload) => {
     const parsedPayload = playlistTrackPayloadSchema.parse(payload)
-    removeTrackFromPlaylist(parsedPayload.playlistId, parsedPayload.trackId)
+    return removeTrackFromPlaylist(parsedPayload.playlistId, parsedPayload.trackId)
   })
 
   ipcMain.handle('playlist:moveTrack', async (_event, payload) => {
@@ -191,7 +408,79 @@ export function registerMusicIpcHandlers() {
     return refreshAllPlaylistCovers()
   })
 
+  ipcMain.handle('playlist:exportM3u', async (_event, playlistId) => {
+    const parsedPlaylistId = playlistIdSchema.parse(playlistId)
+    const playlist = getPlaylistById(parsedPlaylistId)
+
+    if (!playlist) {
+      throw new Error('Playlist not found.')
+    }
+
+    const tracks = getPlaylistTracks(parsedPlaylistId)
+    const result = await dialog.showSaveDialog({
+      title: 'Export playlist',
+      defaultPath: `${sanitizeFileName(playlist.name)}.m3u8`,
+      filters: [
+        {
+          name: 'M3U Playlist',
+          extensions: ['m3u8', 'm3u']
+        }
+      ]
+    })
+
+    if (result.canceled || !result.filePath) {
+      return null
+    }
+
+    const filePath = m3uPathSchema.parse(ensureM3uExtension(result.filePath))
+    writeM3uPlaylist(filePath, playlist, tracks)
+
+    return {
+      filePath,
+      trackCount: tracks.length
+    }
+  })
+
+  ipcMain.handle('playlist:importM3u', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Import playlist',
+      properties: ['openFile'],
+      filters: [
+        {
+          name: 'M3U Playlist',
+          extensions: ['m3u8', 'm3u']
+        }
+      ]
+    })
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+
+    const sourcePath = parseExistingM3uPath(result.filePaths[0])
+    const importedPaths = readM3uPlaylistPaths(sourcePath)
+    const trackIdByPath = new Map(
+      getAllTracks().map((track) => [path.normalize(track.path).toLowerCase(), track.id])
+    )
+    const trackIds = importedPaths
+      .map((trackPath) => trackIdByPath.get(path.normalize(trackPath).toLowerCase()))
+      .filter((trackId): trackId is string => Boolean(trackId))
+
+    if (trackIds.length === 0) {
+      throw new Error('No imported playlist tracks matched the current library.')
+    }
+
+    const playlistName = path.basename(sourcePath, path.extname(sourcePath))
+    const importResult = createPlaylistWithTracks(playlistName, trackIds)
+
+    return {
+      ...importResult,
+      unmatchedCount: importedPaths.length - trackIds.length,
+      sourcePath
+    }
+  })
+
   ipcMain.handle('playlist:delete', async (_event, playlistId) => {
-    deletePlaylist(playlistIdSchema.parse(playlistId))
+    return deletePlaylist(playlistIdSchema.parse(playlistId))
   })
 }

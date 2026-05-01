@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import AddToQueueButton from '../../components/library/AddToQueueButton'
 import CollectionActionMenu from '../../components/library/CollectionActionMenu'
 import FolderImportButton from '../../components/library/FolderImportButton'
+import MusicFileImportButton from '../../components/library/MusicFileImportButton'
 import TrackActionMenu from '../../components/library/TrackActionMenu'
 import CoverArtwork from '../../components/player/CoverArtwork'
 import { useMinuteTicker } from '../../hooks/useMinuteTicker'
@@ -55,7 +56,7 @@ export default function HomePage() {
   const historyError = useHistoryStore((state) => state.error)
   const loadRecentHistory = useHistoryStore((state) => state.loadRecentHistory)
   const clearHistory = useHistoryStore((state) => state.clearHistory)
-  const removeHistoryEntry = useHistoryStore((state) => state.removeHistoryEntry)
+  const removeTrackHistory = useHistoryStore((state) => state.removeTrackHistory)
   const currentTrack = usePlayerStore((state) => state.currentTrack)
   const isPlaying = usePlayerStore((state) => state.isPlaying)
   const queue = usePlayerStore((state) => state.queue)
@@ -168,7 +169,7 @@ export default function HomePage() {
     }
   }
 
-  const handleRemoveHistoryEntry = async (historyId: string, trackTitle: string) => {
+  const handleRemoveHistoryTrack = async (historyId: string, trackId: string, trackTitle: string) => {
     if (historyLoading || removingEntryId === historyId) {
       return
     }
@@ -176,12 +177,12 @@ export default function HomePage() {
     setRemovingEntryId(historyId)
 
     try {
-      const removed = await removeHistoryEntry(historyId)
+      const removed = await removeTrackHistory(trackId)
 
       if (removed) {
         showFeedback(`Removed ${trackTitle} from recent plays.`)
       } else {
-        showFeedback('Could not remove that history entry right now.', 'error')
+        showFeedback('Could not remove that track from recent plays right now.', 'error')
       }
     } finally {
       setRemovingEntryId((current) => (current === historyId ? null : current))
@@ -252,6 +253,7 @@ export default function HomePage() {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <FolderImportButton />
+            <MusicFileImportButton />
             <Link
               to="/library/tracks"
               className="rounded-2xl border border-white/10 px-4 py-3 text-sm text-slate-100 transition hover:bg-white/10"
@@ -766,7 +768,11 @@ export default function HomePage() {
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <TrackActionMenu
                     track={entry.track}
-                    onRemove={() => void handleRemoveHistoryEntry(entry.id, entry.track.title)}
+                    onRemove={() =>
+                      void handleRemoveHistoryTrack(entry.id, entry.trackId, entry.track.title)
+                    }
+                    removeSectionLabel="History"
+                    removeButtonLabel="Remove From Recent"
                   />
                   <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500">
                     {removingEntryId === entry.id ? 'Removing...' : formatPlayedAt(entry.playedAt)}

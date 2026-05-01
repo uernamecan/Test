@@ -18,6 +18,10 @@ export type TrackRow = {
   is_favorite: number
 }
 
+type ReplaceLibraryTracksOptions = {
+  preserveSourcePaths?: string[]
+}
+
 const TRACK_UPSERT_SQL = `
   INSERT INTO tracks (
     id, path, title, artist, album, duration, cover_path, lyric_path,
@@ -64,6 +68,20 @@ function escapeLikePattern(value: string) {
   return value.replace(/[\\%_]/g, (match) => `\\${match}`)
 }
 
+function normalizeTrackPath(value: string) {
+  return value.replace(/\\/g, '/').replace(/\/+$/g, '').toLowerCase()
+}
+
+function isTrackUnderSource(trackPath: string, sourcePath: string) {
+  const normalizedTrackPath = normalizeTrackPath(trackPath)
+  const normalizedSourcePath = normalizeTrackPath(sourcePath)
+
+  return (
+    normalizedTrackPath === normalizedSourcePath ||
+    normalizedTrackPath.startsWith(`${normalizedSourcePath}/`)
+  )
+}
+
 export function upsertTracks(tracks: Track[]) {
   if (tracks.length === 0) {
     return
@@ -81,7 +99,10 @@ export function upsertTracks(tracks: Track[]) {
   transaction(tracks)
 }
 
-export function replaceLibraryTracks(tracks: Track[]) {
+export function replaceLibraryTracks(
+  tracks: Track[],
+  options: ReplaceLibraryTracksOptions = {}
+) {
   const database = getDatabase()
   const upsert = database.prepare(TRACK_UPSERT_SQL)
 
@@ -104,6 +125,14 @@ export function replaceLibraryTracks(tracks: Track[]) {
       WHERE next_library_track_ids.id = tracks.id
     )
   `)
+  const getExistingTrackRefs = database.prepare(`
+    SELECT id, path
+    FROM tracks
+  `)
+  const deleteTrackById = database.prepare(`
+    DELETE FROM tracks
+    WHERE id = ?
+  `)
   const deleteOrphanedPlaylistTracks = database.prepare(`
     DELETE FROM playlist_tracks
     WHERE track_id NOT IN (SELECT id FROM tracks)
@@ -117,8 +146,11 @@ export function replaceLibraryTracks(tracks: Track[]) {
     WHERE track_id NOT IN (SELECT id FROM tracks)
   `)
 
-  const transaction = database.transaction((items: Track[]) => {
-    if (items.length === 0) {
+  const transaction = database.transaction((items: Track[], preserveSourcePaths: string[]) => {
+    const shouldPreserveTrack = (trackPath: string) =>
+      preserveSourcePaths.some((sourcePath) => isTrackUnderSource(trackPath, sourcePath))
+
+    if (items.length === 0 && preserveSourcePaths.length === 0) {
       deleteAll.run()
       deleteOrphanedPlaylistTracks.run()
       deleteOrphanedFavorites.run()
@@ -133,7 +165,20 @@ export function replaceLibraryTracks(tracks: Track[]) {
       insertNextTrackId.run(track.id)
     }
 
-    deleteMissing.run()
+    if (preserveSourcePaths.length === 0) {
+      deleteMissing.run()
+    } else {
+      const nextTrackIds = new Set(items.map((track) => track.id))
+      const existingTracks = getExistingTrackRefs.all() as Array<{ id: string; path: string }>
+
+      for (const existingTrack of existingTracks) {
+        if (nextTrackIds.has(existingTrack.id) || shouldPreserveTrack(existingTrack.path)) {
+          continue
+        }
+
+        deleteTrackById.run(existingTrack.id)
+      }
+    }
 
     for (const track of items) {
       upsert.run(track)
@@ -144,7 +189,7 @@ export function replaceLibraryTracks(tracks: Track[]) {
     deleteOrphanedHistory.run()
   })
 
-  transaction(tracks)
+  transaction(tracks, options.preserveSourcePaths ?? [])
 }
 
 export function getAllTracks() {

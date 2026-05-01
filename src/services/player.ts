@@ -107,7 +107,18 @@ function resetPlayback() {
 }
 
 function seekTo(seconds: number) {
-  audioElement.currentTime = Math.max(0, seconds)
+  if (!audioElement.src) {
+    return
+  }
+
+  const safeTime = Math.max(0, seconds)
+  const duration = Number.isFinite(audioElement.duration) ? audioElement.duration : safeTime
+
+  try {
+    audioElement.currentTime = Math.min(safeTime, duration)
+  } catch (error) {
+    console.warn('Failed to seek audio element:', error)
+  }
 }
 
 function setVolume(volume: number) {

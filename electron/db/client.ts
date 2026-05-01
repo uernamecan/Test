@@ -56,6 +56,14 @@ CREATE TABLE IF NOT EXISTS favorite_tracks (
   created_at TEXT NOT NULL,
   FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks (artist);
+CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks (album);
+CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist ON playlist_tracks (playlist_id, position);
+CREATE INDEX IF NOT EXISTS idx_playlist_tracks_track ON playlist_tracks (track_id);
+CREATE INDEX IF NOT EXISTS idx_history_track ON history (track_id);
+CREATE INDEX IF NOT EXISTS idx_history_played_at ON history (played_at DESC);
+CREATE INDEX IF NOT EXISTS idx_favorite_tracks_created_at ON favorite_tracks (created_at DESC);
 `
 
 let database: BetterSqlite3.Database | null = null
@@ -85,6 +93,7 @@ export function initDatabase(databasePath = getDatabasePath()) {
   database = new BetterSqlite3(databasePath)
   database.pragma('journal_mode = WAL')
   database.pragma('foreign_keys = ON')
+  database.pragma('busy_timeout = 5000')
   database.exec(readSchema())
 
   logger.info('Database initialized:', databasePath)
@@ -98,4 +107,13 @@ export function getDatabase() {
   }
 
   return database
+}
+
+export function closeDatabase() {
+  if (!database) {
+    return
+  }
+
+  database.close()
+  database = null
 }

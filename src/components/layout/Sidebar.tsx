@@ -154,6 +154,7 @@ export default function Sidebar() {
               <input
                 value={draftName}
                 onChange={(event) => setDraftName(event.target.value)}
+                maxLength={80}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {
                     void handleCreatePlaylist()
