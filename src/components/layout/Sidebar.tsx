@@ -9,12 +9,12 @@ import { usePlaylistStore } from '../../store/playlistStore'
 import { useUiStore } from '../../store/uiStore'
 
 const navigationItems = [
-  { to: '/', label: 'Home' },
-  { to: '/library/tracks', label: 'Tracks' },
-  { to: '/library/favorites', label: 'Favorites' },
-  { to: '/library/albums', label: 'Albums' },
-  { to: '/search', label: 'Search' },
-  { to: '/settings', label: 'Settings' }
+  { to: '/', label: 'Listen Now', icon: '>' },
+  { to: '/library/tracks', label: 'Songs', icon: 'S' },
+  { to: '/library/favorites', label: 'Favorites', icon: 'F' },
+  { to: '/library/albums', label: 'Albums', icon: 'A' },
+  { to: '/search', label: 'Search', icon: '/' },
+  { to: '/settings', label: 'Settings', icon: '*' }
 ]
 
 export default function Sidebar() {
@@ -30,7 +30,7 @@ export default function Sidebar() {
   const [playlistFilter, setPlaylistFilter] = useState('')
 
   const filteredPlaylists = useMemo(() => {
-    return playlists.filter((playlist) => matchesSearchTerms([playlist.name], playlistFilter))
+    return playlists.filter((playlist) => matchesSearchTerms([playlist.name], playlistFilter)).slice(0, 10)
   }, [playlistFilter, playlists])
 
   const handleCreatePlaylist = async () => {
@@ -51,106 +51,104 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`flex h-full flex-col border-r border-white/10 bg-slate-950/70 px-4 py-5 backdrop-blur-xl transition ${
-        sidebarCollapsed ? 'w-[92px]' : 'w-[280px]'
+      className={`flex h-full flex-col border-r border-black/10 bg-[#f2f2f7]/88 px-3 py-4 text-slate-950 backdrop-blur-2xl transition dark:border-white/10 dark:bg-[#1c1c1f]/92 dark:text-slate-100 ${
+        sidebarCollapsed ? 'w-[82px]' : 'w-[260px]'
       }`}
     >
-      <div className="mb-8 flex items-center justify-between gap-3">
+      <div className="mb-5 flex items-center justify-between gap-3 px-2">
         <div className="min-w-0">
-          <div className="text-xs uppercase tracking-[0.22em] text-aurora">Desktop Player</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">Music</div>
           {!sidebarCollapsed ? (
-            <div className="truncate text-lg font-semibold text-white">{APP_NAME}</div>
+            <div className="mt-1 truncate text-xl font-bold tracking-tight">{APP_NAME}</div>
           ) : null}
         </div>
         <button
           type="button"
           onClick={toggleSidebar}
-          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300 hover:bg-white/10"
+          className="grid h-8 w-8 place-items-center rounded-full bg-black/5 text-sm text-slate-500 transition hover:bg-black/10 dark:bg-white/8 dark:text-slate-300 dark:hover:bg-white/12"
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          {sidebarCollapsed ? '>>' : '<<'}
+          {sidebarCollapsed ? '>' : '<'}
         </button>
       </div>
 
-      <nav className="grid gap-2">
+      <nav className="grid gap-1">
         {navigationItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
+            title={item.label}
             className={({ isActive }) =>
-              `rounded-2xl px-4 py-3 text-sm transition ${
-                isActive ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-white'
+              `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                isActive
+                  ? 'bg-white text-accent shadow-sm dark:bg-white/10'
+                  : 'text-slate-600 hover:bg-white/70 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white'
               }`
             }
           >
-            {sidebarCollapsed ? item.label.slice(0, 2) : item.label}
+            <span className="grid h-6 w-6 shrink-0 place-items-center text-base">{item.icon}</span>
+            {!sidebarCollapsed ? <span className="truncate">{item.label}</span> : null}
           </NavLink>
         ))}
       </nav>
 
       {!sidebarCollapsed ? (
-        <div className="mt-8 grid gap-4">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Playlists</div>
-              <div className="text-xs text-slate-500">{playlists.length}</div>
+        <section className="mt-7 min-h-0 flex-1">
+          <div className="mb-3 flex items-center justify-between px-2">
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              Playlists
             </div>
-            <div className="mt-3">
-              <input
-                value={playlistFilter}
-                onChange={(event) => setPlaylistFilter(event.target.value)}
-                placeholder="Filter playlists"
-                className="w-full rounded-2xl border border-white/10 bg-slate-950/45 px-3 py-3 text-sm text-white outline-none placeholder:text-slate-500"
-              />
-            </div>
-            <div className="mt-3 grid gap-2">
-              {filteredPlaylists.length > 0 ? (
-                filteredPlaylists.map((playlist) => (
-                  <NavLink
-                    key={playlist.id}
-                    to={`/playlists/${playlist.id}`}
-                    className={({ isActive }) =>
-                      `flex items-center justify-between gap-3 rounded-2xl px-3 py-3 text-sm transition ${
-                        isActive
-                          ? 'bg-white text-slate-950'
-                          : 'bg-slate-950/45 text-slate-100 hover:bg-white/10'
-                      }`
-                    }
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-3">
-                      <CoverArtwork
-                        coverPath={playlist.coverPath}
-                        title={playlist.name}
-                        className="h-10 w-10 shrink-0 rounded-xl"
-                        fallbackLabel={playlist.name.slice(0, 2)}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate">{playlist.name}</div>
-                        <div className="mt-1 text-[11px] uppercase tracking-[0.16em] opacity-70">
-                          {playlist.trackCount ?? 0} tracks
-                        </div>
-                      </div>
-                    </div>
-                    <PlaylistQuickActions
-                      playlistId={playlist.id}
-                      playlistName={playlist.name}
-                    />
-                  </NavLink>
-                ))
-              ) : playlists.length > 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/10 px-3 py-4 text-sm text-slate-400">
-                  No playlists match this filter.
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-white/10 px-3 py-4 text-sm text-slate-400">
-                  No playlists yet.
-                </div>
-              )}
-            </div>
+            <div className="text-xs text-slate-400">{playlists.length}</div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Create Playlist</div>
-            <div className="mt-3 grid gap-2">
+          <input
+            value={playlistFilter}
+            onChange={(event) => setPlaylistFilter(event.target.value)}
+            placeholder="Filter playlists"
+            className="mb-3 w-full rounded-xl border border-black/5 bg-white/70 px-3 py-2.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-accent/40 dark:border-white/10 dark:bg-white/8 dark:text-white"
+          />
+
+          <div className="grid max-h-[34vh] gap-1 overflow-y-auto pr-1">
+            {filteredPlaylists.length > 0 ? (
+              filteredPlaylists.map((playlist) => (
+                <NavLink
+                  key={playlist.id}
+                  to={`/playlists/${playlist.id}`}
+                  className={({ isActive }) =>
+                    `group flex items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-sm transition ${
+                      isActive
+                        ? 'bg-white text-slate-950 shadow-sm dark:bg-white/10 dark:text-white'
+                        : 'text-slate-600 hover:bg-white/70 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-white/8 dark:hover:text-white'
+                    }`
+                  }
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <CoverArtwork
+                      coverPath={playlist.coverPath}
+                      title={playlist.name}
+                      className="h-9 w-9 shrink-0 rounded-lg"
+                      fallbackLabel={playlist.name.slice(0, 2)}
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{playlist.name}</div>
+                      <div className="mt-0.5 text-xs text-slate-400">{playlist.trackCount ?? 0} songs</div>
+                    </div>
+                  </div>
+                  <PlaylistQuickActions playlistId={playlist.id} playlistName={playlist.name} />
+                </NavLink>
+              ))
+            ) : (
+              <div className="rounded-xl border border-dashed border-black/10 px-3 py-4 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400">
+                {playlists.length > 0 ? 'No matching playlists.' : 'No playlists yet.'}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 rounded-2xl bg-white/60 p-3 shadow-sm dark:bg-white/7">
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              New Playlist
+            </div>
+            <div className="mt-2 flex gap-2">
               <input
                 value={draftName}
                 onChange={(event) => setDraftName(event.target.value)}
@@ -160,30 +158,22 @@ export default function Sidebar() {
                     void handleCreatePlaylist()
                   }
                 }}
-                placeholder="Playlist name"
-                className="rounded-2xl border border-white/10 bg-slate-950/45 px-3 py-3 text-sm text-white outline-none placeholder:text-slate-500"
+                placeholder="Name"
+                className="min-w-0 flex-1 rounded-xl border border-black/5 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-accent/40 dark:border-white/10 dark:bg-black/20 dark:text-white"
               />
               <button
                 type="button"
                 onClick={() => void handleCreatePlaylist()}
                 disabled={loading || !draftName.trim()}
-                className="rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Create
+                Add
               </button>
-              {error ? <p className="text-xs text-rose-200">{error}</p> : null}
             </div>
+            {error ? <p className="mt-2 text-xs text-rose-500">{error}</p> : null}
           </div>
-        </div>
+        </section>
       ) : null}
-
-      <div className="mt-auto rounded-3xl border border-white/10 bg-white/5 p-4">
-        <div className="text-xs uppercase tracking-[0.18em] text-slate-400">MVP</div>
-        <p className="mt-2 text-sm leading-6 text-slate-300">
-          Import folders, scan metadata, browse the library, play tracks, and manage playlists in
-          one desktop shell.
-        </p>
-      </div>
     </aside>
   )
 }

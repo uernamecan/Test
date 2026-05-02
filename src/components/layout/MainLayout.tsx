@@ -61,16 +61,21 @@ export default function MainLayout() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
+    document.documentElement.classList.toggle('light', theme === 'light')
   }, [theme])
 
   return (
-    <div className="h-screen overflow-hidden bg-mesh-glow text-slate-100">
+    <div
+      className={`h-screen overflow-hidden ${
+        theme === 'dark' ? 'theme-dark bg-[#111114] text-slate-100' : 'theme-light text-slate-900'
+      }`}
+    >
       <div className="grid h-full grid-rows-[1fr_auto]">
         <div className="grid min-h-0 grid-cols-[auto_1fr]">
           <Sidebar />
-          <div className="relative flex min-h-0 flex-col">
+          <div className="relative flex min-h-0 flex-col bg-white/70 dark:bg-[#17171a]/86">
             <Header />
-            <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+            <main className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-8 sm:py-7">
               <Outlet />
             </main>
             {draggingLibraryItems ? (

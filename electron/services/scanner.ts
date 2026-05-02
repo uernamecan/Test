@@ -41,8 +41,14 @@ function addScanWarning(warnings: ScanWarning[], warning: ScanWarning) {
   logger.warn(warning.reason, warning.path)
 }
 
+function isSystemSidecarFile(filePath: string) {
+  const fileName = path.basename(filePath)
+
+  return fileName.startsWith('._') || fileName === '.DS_Store' || fileName === 'Thumbs.db'
+}
+
 export function isSupportedAudioFile(filePath: string) {
-  return SUPPORTED_AUDIO_EXTENSIONS.has(path.extname(filePath).toLowerCase())
+  return !isSystemSidecarFile(filePath) && SUPPORTED_AUDIO_EXTENSIONS.has(path.extname(filePath).toLowerCase())
 }
 
 function shouldSkipDirectory(directoryPath: string, artworkCacheDir: string) {
@@ -179,7 +185,10 @@ export async function scanMusicSources(paths: string[]): Promise<MusicScanResult
   }
 
   return {
-    tracks: await parseCollectedFiles(Array.from(collectedFiles), warnings),
+    tracks: await parseCollectedFiles(
+      Array.from(collectedFiles).sort((left, right) => left.localeCompare(right)),
+      warnings
+    ),
     discoveredFileCount: collectedFiles.size,
     warnings
   }

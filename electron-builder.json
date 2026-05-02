@@ -3,7 +3,7 @@
   "productName": "PulseLocal",
   "directories": {
     "output": "release",
-    "buildResources": "public"
+    "buildResources": "assets"
   },
   "files": [
     "dist/**/*",
@@ -14,9 +14,9 @@
     "main": "dist-electron/electron/main.js"
   },
   "win": {
+    "signAndEditExecutable": false,
     "target": [
       "nsis"
     ]
   }
 }
-

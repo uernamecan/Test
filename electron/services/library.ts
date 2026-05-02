@@ -1,7 +1,8 @@
 import fs from 'node:fs/promises'
-import { getAllTracks, replaceLibraryTracks } from '../db/repositories/tracksRepo'
-import { setSetting } from '../db/repositories/settingsRepo'
+import { getAllTracks, replaceLibraryTracks, upsertTracks } from '../db/repositories/tracksRepo'
+import { getSetting, setSetting } from '../db/repositories/settingsRepo'
 import { isSupportedAudioFile, scanMusicSources } from './scanner'
+import { parseTrackMetadata } from './metadata'
 import type { Track } from '../../src/types/track'
 import { logger } from '../utils/logger'
 
@@ -101,6 +102,89 @@ export async function syncLibrary(sourcePaths: string[]) {
       warningDetailLimit: MAX_PERSISTED_SCAN_WARNINGS,
       durationMs: Date.now() - scanStartedAt,
       warnings: persistedWarnings
+    }
+  }
+}
+
+function mergeLibraryPaths(existingPaths: string[], nextPaths: string[]) {
+  const seenPaths = new Set<string>()
+  const mergedPaths: string[] = []
+
+  for (const sourcePath of [...existingPaths, ...nextPaths]) {
+    const trimmedPath = sourcePath.trim()
+    const dedupeKey = trimmedPath.toLowerCase()
+
+    if (!trimmedPath || seenPaths.has(dedupeKey)) {
+      continue
+    }
+
+    seenPaths.add(dedupeKey)
+    mergedPaths.push(trimmedPath)
+  }
+
+  return mergedPaths
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
+}
+
+export async function importAudioFiles(filePaths: string[]) {
+  const scanStartedAt = Date.now()
+  const previousTracks = getAllTracks()
+  const importedTracks: Track[] = []
+  const importedPaths: string[] = []
+  const warnings: Array<{ path: string; reason: string }> = []
+
+  for (const filePath of filePaths.map((item) => item.trim()).filter(Boolean)) {
+    try {
+      const realPath = await fs.realpath(filePath)
+      const stats = await fs.stat(realPath)
+
+      if (!stats.isFile()) {
+        warnings.push({
+          path: realPath,
+          reason: 'Skipped because the selected path is not a file.'
+        })
+        continue
+      }
+
+      if (!isSupportedAudioFile(realPath)) {
+        warnings.push({
+          path: realPath,
+          reason: 'Skipped unsupported audio file type.'
+        })
+        continue
+      }
+
+      importedTracks.push(await parseTrackMetadata(realPath))
+      importedPaths.push(realPath)
+    } catch (error) {
+      logger.warn('Failed to import selected audio file:', filePath, error)
+      warnings.push({
+        path: filePath,
+        reason: `Skipped unreadable audio file: ${getErrorMessage(error)}`
+      })
+    }
+  }
+
+  upsertTracks(importedTracks)
+
+  const existingLibraryPaths = getSetting<string[]>('libraryPaths') ?? []
+  setSetting('libraryPaths', mergeLibraryPaths(existingLibraryPaths, importedPaths))
+
+  const nextTracks = getAllTracks()
+  const stats = buildScanStats(previousTracks, nextTracks)
+
+  return {
+    tracks: nextTracks,
+    stats: {
+      ...stats,
+      discoveredFileCount: importedPaths.length,
+      warningCount: warnings.length,
+      warningDetailLimit: MAX_PERSISTED_SCAN_WARNINGS,
+      durationMs: Date.now() - scanStartedAt,
+      warnings: warnings.slice(0, MAX_PERSISTED_SCAN_WARNINGS)
     }
   }
 }

@@ -25,7 +25,7 @@ import {
 } from '../db/repositories/historyRepo'
 import { getDatabase } from '../db/client'
 import { getAllTracks, searchTracks } from '../db/repositories/tracksRepo'
-import { syncLibrary } from '../services/library'
+import { importAudioFiles, syncLibrary } from '../services/library'
 import { parseLyricsFile } from '../services/lyrics'
 import { readM3uPlaylistPaths, writeM3uPlaylist } from '../services/m3u'
 import {
@@ -171,6 +171,11 @@ export function registerMusicIpcHandlers() {
   ipcMain.handle('music:scanLibrary', async (_event, paths) => {
     const sourcePaths = librarySourcePathsSchema.parse(paths)
     return syncLibrary(sourcePaths)
+  })
+
+  ipcMain.handle('music:importAudioFiles', async (_event, paths) => {
+    const audioFilePaths = librarySourcePathsSchema.parse(paths)
+    return importAudioFiles(audioFilePaths)
   })
 
   ipcMain.handle('music:getLibrarySourceInfo', async (_event, paths) => {

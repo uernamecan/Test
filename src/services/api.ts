@@ -23,6 +23,9 @@ export const musicApi = {
   scanLibrary(paths: string[]) {
     return getMusicApi().scanLibrary(paths)
   },
+  importAudioFiles(paths: string[]) {
+    return getMusicApi().importAudioFiles(paths)
+  },
   getLibrarySourceInfo(paths: string[]) {
     return getMusicApi().getLibrarySourceInfo(paths)
   },

@@ -6,6 +6,7 @@ const api: MusicAPI = {
   selectFolders: () => ipcRenderer.invoke('music:selectFolders'),
   selectAudioFiles: () => ipcRenderer.invoke('music:selectAudioFiles'),
   scanLibrary: (paths) => ipcRenderer.invoke('music:scanLibrary', paths),
+  importAudioFiles: (paths) => ipcRenderer.invoke('music:importAudioFiles', paths),
   getLibrarySourceInfo: (paths) => ipcRenderer.invoke('music:getLibrarySourceInfo', paths),
   getAllTracks: () => ipcRenderer.invoke('music:getAllTracks'),
   searchTracks: (keyword) => ipcRenderer.invoke('music:searchTracks', keyword),

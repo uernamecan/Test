@@ -4,12 +4,16 @@
 
 :root {
   color-scheme: dark;
-  font-family: 'Segoe UI', 'PingFang SC', sans-serif;
-  background: #071018;
+  font-family: 'SF Pro Display', 'Segoe UI Variable Display', 'Aptos Display', 'PingFang SC', sans-serif;
+  background: #111114;
 }
 
 .dark {
   color-scheme: dark;
+}
+
+.light {
+  color-scheme: light;
 }
 
 html,
@@ -22,9 +26,74 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 28%),
-    radial-gradient(circle at top right, rgba(249, 115, 22, 0.16), transparent 24%),
-    linear-gradient(180deg, #071018 0%, #0d1624 100%);
+    radial-gradient(circle at top left, rgba(250, 35, 59, 0.16), transparent 30%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 28%),
+    linear-gradient(180deg, #111114 0%, #18181b 100%);
+}
+
+html.light body {
+  background:
+    radial-gradient(circle at top left, rgba(250, 35, 59, 0.12), transparent 30%),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.9), transparent 32%),
+    linear-gradient(180deg, #f8f8fb 0%, #ececf1 100%);
+}
+
+.theme-light {
+  background:
+    radial-gradient(circle at top left, rgba(250, 35, 59, 0.12), transparent 34%),
+    linear-gradient(180deg, #f7f7fa 0%, #ececf1 100%);
+  color: #0f172a;
+}
+
+.theme-light [class*='bg-slate-950'],
+.theme-light [class*='bg-slate-900'] {
+  background-color: rgba(255, 255, 255, 0.74) !important;
+}
+
+.theme-light [class*='bg-white/'],
+.theme-light [class*='bg-white/['],
+.theme-light [class*='bg-white\\['] {
+  background-color: rgba(255, 255, 255, 0.58) !important;
+}
+
+.theme-light [class*='border-white/'] {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+.theme-light [class*='text-white'],
+.theme-light [class*='text-slate-100'],
+.theme-light [class*='text-slate-200'] {
+  color: #0f172a !important;
+}
+
+.theme-light [class*='text-slate-300'],
+.theme-light [class*='text-slate-400'] {
+  color: #475569 !important;
+}
+
+.theme-light [class*='text-slate-500'],
+.theme-light [class*='text-slate-600'] {
+  color: #64748b !important;
+}
+
+.theme-light input,
+.theme-light select,
+.theme-light textarea {
+  color: #0f172a;
+}
+
+.theme-light input::placeholder,
+.theme-light textarea::placeholder {
+  color: #94a3b8;
+}
+
+.theme-light option {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+.theme-light .shadow-soft {
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
 }
 
 * {
@@ -49,7 +118,7 @@ input {
   width: 16px;
   border-radius: 999px;
   border: 2px solid rgba(255, 255, 255, 0.75);
-  background: linear-gradient(135deg, #5eead4 0%, #f97316 100%);
+  background: linear-gradient(135deg, #fa233b 0%, #fb7185 100%);
   box-shadow: 0 8px 20px rgba(8, 15, 29, 0.35);
 }
 
@@ -64,12 +133,12 @@ input {
   width: 16px;
   border-radius: 999px;
   border: 2px solid rgba(255, 255, 255, 0.75);
-  background: linear-gradient(135deg, #5eead4 0%, #f97316 100%);
+  background: linear-gradient(135deg, #fa233b 0%, #fb7185 100%);
   box-shadow: 0 8px 20px rgba(8, 15, 29, 0.35);
 }
 
 ::selection {
-  background: rgba(20, 184, 166, 0.35);
+  background: rgba(250, 35, 59, 0.32);
   color: white;
 }
 

@@ -12,8 +12,12 @@ function normalizeText(value: string | null | undefined, fallback: string) {
   return trimmed && trimmed.length > 0 ? trimmed : fallback
 }
 
-function createFallbackTrack(filePath: string, stats: Awaited<ReturnType<typeof fs.stat>>): Track {
+async function createFallbackTrack(
+  filePath: string,
+  stats: Awaited<ReturnType<typeof fs.stat>>
+): Promise<Track> {
   const fileName = path.parse(filePath).name
+  const lyricPath = await findLyricPath(filePath)
 
   return {
     id: createHash('sha1').update(filePath).digest('hex'),
@@ -22,6 +26,7 @@ function createFallbackTrack(filePath: string, stats: Awaited<ReturnType<typeof 
     artist: 'Unknown Artist',
     album: 'Unknown Album',
     duration: 0,
+    lyricPath,
     format: path.extname(filePath).slice(1).toLowerCase(),
     createdAt: stats.birthtime.toISOString(),
     updatedAt: stats.mtime.toISOString()
@@ -62,4 +67,3 @@ export async function parseTrackMetadata(filePath: string): Promise<Track> {
     return createFallbackTrack(filePath, stats)
   }
 }
-

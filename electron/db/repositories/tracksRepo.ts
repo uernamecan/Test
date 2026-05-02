@@ -22,6 +22,13 @@ type ReplaceLibraryTracksOptions = {
   preserveSourcePaths?: string[]
 }
 
+type TrackPersistenceParams = Omit<Track, 'coverPath' | 'lyricPath' | 'bitrate' | 'sampleRate'> & {
+  coverPath: string | null
+  lyricPath: string | null
+  bitrate: number | null
+  sampleRate: number | null
+}
+
 const TRACK_UPSERT_SQL = `
   INSERT INTO tracks (
     id, path, title, artist, album, duration, cover_path, lyric_path,
@@ -82,6 +89,16 @@ function isTrackUnderSource(trackPath: string, sourcePath: string) {
   )
 }
 
+function toTrackPersistenceParams(track: Track): TrackPersistenceParams {
+  return {
+    ...track,
+    coverPath: track.coverPath ?? null,
+    lyricPath: track.lyricPath ?? null,
+    bitrate: track.bitrate ?? null,
+    sampleRate: track.sampleRate ?? null
+  }
+}
+
 export function upsertTracks(tracks: Track[]) {
   if (tracks.length === 0) {
     return
@@ -92,7 +109,7 @@ export function upsertTracks(tracks: Track[]) {
 
   const transaction = database.transaction((items: Track[]) => {
     for (const track of items) {
-      upsert.run(track)
+      upsert.run(toTrackPersistenceParams(track))
     }
   })
 
@@ -104,14 +121,15 @@ export function replaceLibraryTracks(
   options: ReplaceLibraryTracksOptions = {}
 ) {
   const database = getDatabase()
-  const upsert = database.prepare(TRACK_UPSERT_SQL)
-
-  const deleteAll = database.prepare('DELETE FROM tracks')
-  const createNextTrackIdsTable = database.prepare(`
+  database.exec(`
     CREATE TEMP TABLE IF NOT EXISTS next_library_track_ids (
       id TEXT PRIMARY KEY
     )
   `)
+
+  const upsert = database.prepare(TRACK_UPSERT_SQL)
+
+  const deleteAll = database.prepare('DELETE FROM tracks')
   const clearNextTrackIdsTable = database.prepare('DELETE FROM next_library_track_ids')
   const insertNextTrackId = database.prepare(`
     INSERT OR IGNORE INTO next_library_track_ids (id)
@@ -158,7 +176,6 @@ export function replaceLibraryTracks(
       return
     }
 
-    createNextTrackIdsTable.run()
     clearNextTrackIdsTable.run()
 
     for (const track of items) {
@@ -181,7 +198,7 @@ export function replaceLibraryTracks(
     }
 
     for (const track of items) {
-      upsert.run(track)
+      upsert.run(toTrackPersistenceParams(track))
     }
 
     deleteOrphanedPlaylistTracks.run()

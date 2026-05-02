@@ -983,7 +983,7 @@ export default function TrackTable({
               </span>
             ) : null}
           </div>
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+          <div className="hidden items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
             {keyboardFocused ? (
               <span className="rounded-full border border-aurora/30 bg-aurora/10 px-2 py-1 text-aurora">
                 Keyboard Active

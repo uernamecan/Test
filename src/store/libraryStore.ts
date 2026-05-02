@@ -182,29 +182,39 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       }
     }
 
-    const existingPaths = resolveAppSettings(useSettingsStore.getState().settings).libraryPaths
-    const nextPaths = mergeLibrarySources(existingPaths, selectedPaths)
+    set({ loading: true, error: null })
 
-    await get().scanFolders(nextPaths)
+    try {
+      const result = await musicApi.importAudioFiles(selectedPaths)
+      const scanStats = {
+        ...result.stats,
+        scannedAt: new Date().toISOString()
+      }
+      syncDependentStoresWithLibrary(result.tracks)
+      set({
+        tracks: result.tracks,
+        lastScanStats: scanStats,
+        loading: false,
+        ready: true
+      })
+      await useSettingsStore.getState().loadSettings()
 
-    const error = get().error
+      return {
+        status: 'completed',
+        selectedCount: selectedPaths.length,
+        stats: scanStats
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to import audio files.'
+      set({
+        loading: false,
+        ready: true,
+        error: errorMessage
+      })
 
-    if (error) {
       return {
         status: 'failed',
-        error
-      }
-    }
-
-    return {
-      status: 'completed',
-      selectedCount: selectedPaths.length,
-      stats: get().lastScanStats ?? {
-        totalCount: get().tracks.length,
-        addedCount: 0,
-        removedCount: 0,
-        updatedCount: 0,
-        scannedAt: new Date().toISOString()
+        error: errorMessage
       }
     }
   },

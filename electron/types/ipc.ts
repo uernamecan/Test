@@ -107,6 +107,7 @@ export interface MusicAPI {
   selectFolders: () => Promise<string[]>
   selectAudioFiles: () => Promise<string[]>
   scanLibrary: (paths: string[]) => Promise<LibraryScanResult>
+  importAudioFiles: (paths: string[]) => Promise<LibraryScanResult>
   getLibrarySourceInfo: (paths: string[]) => Promise<LibrarySourceInfo[]>
   getAllTracks: () => Promise<Track[]>
   searchTracks: (keyword: string) => Promise<Track[]>

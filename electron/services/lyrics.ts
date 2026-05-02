@@ -1,4 +1,4 @@
-import { access, readFile } from 'node:fs/promises'
+import { access, readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { LyricLine } from '../../src/types/lyrics'
 
@@ -12,8 +12,7 @@ function parseTimestamp(minutes: string, seconds: string, fraction?: string) {
     return baseSeconds
   }
 
-  const normalizedFraction =
-    fraction.length === 3 ? Number(fraction) / 1000 : Number(fraction) / 100
+  const normalizedFraction = Number(fraction) / 10 ** fraction.length
 
   return baseSeconds + normalizedFraction
 }
@@ -22,20 +21,56 @@ function normalizeLyricText(line: string) {
   return line.replace(LYRIC_TIMESTAMP_PATTERN, '').trim()
 }
 
+function decodeLyricContent(buffer: Buffer) {
+  if (buffer[0] === 0xff && buffer[1] === 0xfe) {
+    return buffer.subarray(2).toString('utf16le')
+  }
+
+  if (buffer[0] === 0xfe && buffer[1] === 0xff) {
+    const swappedBuffer = Buffer.alloc(buffer.length - 2)
+
+    for (let index = 2; index < buffer.length; index += 2) {
+      swappedBuffer[index - 2] = buffer[index + 1] ?? 0
+      swappedBuffer[index - 1] = buffer[index]
+    }
+
+    return swappedBuffer.toString('utf16le')
+  }
+
+  return buffer.toString('utf8').replace(/^\uFEFF/, '')
+}
+
 export async function findLyricPath(trackPath: string) {
   const parsedPath = path.parse(trackPath)
-  const lyricPath = path.join(parsedPath.dir, `${parsedPath.name}.lrc`)
+  const lyricCandidates = [
+    `${parsedPath.name}.lrc`,
+    `${parsedPath.base}.lrc`
+  ]
+
+  for (const lyricFileName of lyricCandidates) {
+    const lyricPath = path.join(parsedPath.dir, lyricFileName)
+
+    try {
+      await access(lyricPath)
+      return lyricPath
+    } catch {
+      // Try a case-insensitive directory lookup below.
+    }
+  }
 
   try {
-    await access(lyricPath)
-    return lyricPath
+    const lowerCaseCandidates = new Set(lyricCandidates.map((fileName) => fileName.toLowerCase()))
+    const directoryEntries = await readdir(parsedPath.dir)
+    const matchedEntry = directoryEntries.find((entry) => lowerCaseCandidates.has(entry.toLowerCase()))
+
+    return matchedEntry ? path.join(parsedPath.dir, matchedEntry) : undefined
   } catch {
     return undefined
   }
 }
 
 export async function parseLyricsFile(lyricPath: string): Promise<LyricLine[]> {
-  const rawLyricContent = (await readFile(lyricPath, 'utf8')).replace(/^\uFEFF/, '')
+  const rawLyricContent = decodeLyricContent(await readFile(lyricPath))
   const lines = rawLyricContent.split(/\r?\n/)
   const parsedLines: LyricLine[] = []
   const offsetMatch = rawLyricContent.match(OFFSET_PATTERN)

@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTrackSystemActions } from '../../hooks/useTrackSystemActions'
 import { clampLyricsPanelWidth, DEFAULT_LYRICS_PANEL_WIDTH } from '../../lib/shell'
 import { formatDuration } from '../../lib/format'
 import { playerService } from '../../services/player'
+import { useFeedbackStore } from '../../store/feedbackStore'
 import { useLyricsStore } from '../../store/lyricsStore'
 import { usePlayerStore } from '../../store/playerStore'
 import { useUiStore } from '../../store/uiStore'
@@ -33,6 +35,8 @@ export default function LyricsPanel() {
   const error = useLyricsStore((state) => state.error)
   const loadLyrics = useLyricsStore((state) => state.loadLyrics)
   const clearLyrics = useLyricsStore((state) => state.clearLyrics)
+  const showFeedback = useFeedbackStore((state) => state.showFeedback)
+  const { openTrackLyricsFile, showTrackLyricsInFolder } = useTrackSystemActions()
   const activeLineRef = useRef<HTMLButtonElement | null>(null)
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null)
   const [isResizing, setIsResizing] = useState(false)
@@ -84,6 +88,30 @@ export default function LyricsPanel() {
             : 'border-white/10 bg-white/5 text-slate-400'
   const currentLineLabel = activeLine?.text ?? (lines.length > 0 ? 'Waiting for the first timed line.' : 'No active lyric line yet.')
   const nextLineLabel = nextLine?.text ?? 'No next line queued.'
+
+  const handleReloadLyrics = useCallback(async () => {
+    if (!currentTrack?.lyricPath || loading) {
+      return
+    }
+
+    await loadLyrics(currentTrack.lyricPath)
+
+    const lyricState = useLyricsStore.getState()
+
+    if (lyricState.error) {
+      showFeedback('Could not reload lyrics.', 'error', null, {
+        detail: lyricState.error
+      })
+      return
+    }
+
+    showFeedback('Lyrics reloaded.', lyricState.lines.length > 0 ? 'success' : 'muted', null, {
+      detail:
+        lyricState.lines.length > 0
+          ? `${lyricState.lines.length} timed line${lyricState.lines.length === 1 ? '' : 's'} parsed.`
+          : 'The file loaded, but no timed lines were found.'
+    })
+  }, [currentTrack?.lyricPath, loadLyrics, loading, showFeedback])
 
   useEffect(() => {
     activeLineRef.current?.scrollIntoView({
@@ -145,6 +173,11 @@ export default function LyricsPanel() {
       if (event.key === 'Escape' && !isTypingTarget) {
         toggleLyrics()
       }
+
+      if ((event.key === 'r' || event.key === 'R') && !isTypingTarget && currentTrack?.lyricPath) {
+        event.preventDefault()
+        void handleReloadLyrics()
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -152,7 +185,7 @@ export default function LyricsPanel() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isResizing, lyricsVisible, toggleLyrics])
+  }, [currentTrack?.lyricPath, handleReloadLyrics, isResizing, lyricsVisible, toggleLyrics])
 
   useEffect(() => {
     const handleResize = () => {
@@ -214,8 +247,37 @@ export default function LyricsPanel() {
           <p className="mt-1 truncate text-xs text-slate-500">
             {currentTrack ? `${currentTrack.title} - ${currentTrack.artist}` : 'No track selected'}
           </p>
+          <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-slate-600">
+            Esc close / R reload
+          </p>
         </div>
         <div className="flex items-center gap-2">
+          {currentTrack?.lyricPath ? (
+            <>
+              <button
+                type="button"
+                onClick={() => void handleReloadLyrics()}
+                disabled={loading}
+                className="rounded-xl border border-white/10 px-3 py-1 text-xs text-slate-300 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? 'Loading' : 'Reload LRC'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void openTrackLyricsFile(currentTrack)}
+                className="rounded-xl border border-white/10 px-3 py-1 text-xs text-slate-300 hover:bg-white/5"
+              >
+                Open LRC
+              </button>
+              <button
+                type="button"
+                onClick={() => void showTrackLyricsInFolder(currentTrack)}
+                className="rounded-xl border border-white/10 px-3 py-1 text-xs text-slate-300 hover:bg-white/5"
+              >
+                Reveal LRC
+              </button>
+            </>
+          ) : null}
           <button
             type="button"
             onClick={() => {

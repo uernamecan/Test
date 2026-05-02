@@ -9,32 +9,23 @@ export default function VolumeControl({ volume, onChange, onToggleMute }: Volume
   const muted = volumePercent === 0
 
   return (
-    <section className="w-full min-w-0 rounded-3xl border border-white/10 bg-white/[0.04] px-4 py-3 sm:min-w-[220px] sm:flex-1">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Volume</div>
-          <div className="mt-1 text-xs text-slate-300">Dial in the room without leaving the player.</div>
-        </div>
-        <button
-          type="button"
-          onClick={onToggleMute}
-          aria-pressed={muted}
-          className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] transition ${
-            muted
-              ? 'border-rose-300/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20'
-              : 'border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
-          }`}
-        >
-          {muted ? 'Muted' : `${volumePercent}%`}
-        </button>
-      </div>
-
-      <div className="mt-4 flex items-center gap-3">
-        <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Min</span>
+    <section className="flex min-w-[190px] items-center gap-3">
+      <button
+        type="button"
+        onClick={onToggleMute}
+        aria-pressed={muted}
+        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+          muted
+            ? 'bg-rose-500/10 text-rose-500 dark:text-rose-300'
+            : 'bg-black/5 text-slate-500 hover:bg-black/10 dark:bg-white/8 dark:text-slate-300 dark:hover:bg-white/12'
+        }`}
+      >
+        {muted ? 'Muted' : `${volumePercent}%`}
+      </button>
         <div className="relative flex-1">
-          <div className="absolute inset-y-1 left-0 right-0 rounded-full bg-white/5" />
+          <div className="absolute inset-y-1 left-0 right-0 rounded-full bg-black/10 dark:bg-white/10" />
           <div
-            className="absolute inset-y-1 left-0 rounded-full bg-gradient-to-r from-slate-500 via-aurora to-accent transition-[width] duration-150"
+            className="absolute inset-y-1 left-0 rounded-full bg-accent transition-[width] duration-150"
             style={{ width: `${volumePercent}%` }}
           />
           <input
@@ -47,8 +38,6 @@ export default function VolumeControl({ volume, onChange, onToggleMute }: Volume
             className="player-range relative h-3 w-full cursor-pointer appearance-none bg-transparent"
           />
         </div>
-        <span className="text-xs uppercase tracking-[0.2em] text-slate-500">Max</span>
-      </div>
     </section>
   )
 }

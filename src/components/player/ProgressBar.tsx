@@ -13,17 +13,13 @@ export default function ProgressBar({ progress, duration, onSeek }: ProgressBarP
   const disabled = duration <= 0
 
   return (
-    <div className="grid gap-2">
-      <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-slate-500">
-        <span>Timeline</span>
-        <span>{duration > 0 ? `${Math.round(progressPercent)}%` : 'Waiting'}</span>
-      </div>
+    <div className="grid gap-1.5">
       <div className="flex items-center gap-3 text-xs text-slate-300">
-        <span className="w-12 text-right font-medium text-white">{formatDuration(progress)}</span>
+        <span className="w-12 text-right font-medium text-slate-500 dark:text-slate-400">{formatDuration(progress)}</span>
         <div className="relative flex-1">
-          <div className="absolute inset-y-1 left-0 right-0 rounded-full bg-white/5" />
+          <div className="absolute inset-y-1 left-0 right-0 rounded-full bg-black/10 dark:bg-white/10" />
           <div
-            className="absolute inset-y-1 left-0 rounded-full bg-gradient-to-r from-aurora via-cyan-300 to-accent transition-[width] duration-150"
+            className="absolute inset-y-1 left-0 rounded-full bg-accent transition-[width] duration-150"
             style={{ width: `${progressPercent}%` }}
           />
           <input
@@ -38,7 +34,7 @@ export default function ProgressBar({ progress, duration, onSeek }: ProgressBarP
             aria-label="Playback progress"
           />
         </div>
-        <span className="w-12 font-medium text-slate-200">{formatDuration(duration)}</span>
+        <span className="w-12 font-medium text-slate-500 dark:text-slate-400">{formatDuration(duration)}</span>
       </div>
     </div>
   )

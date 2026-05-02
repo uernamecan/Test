@@ -4,31 +4,13 @@ import { musicApi } from '../../services/api'
 import { usePlayerStore } from '../../store/playerStore'
 import { useUiStore } from '../../store/uiStore'
 
-const titles: Record<string, { title: string; subtitle: string }> = {
-  '/': {
-    title: 'Local Music Hub',
-    subtitle: 'Import folders, scan metadata, and grow the player from a clean desktop-first base.'
-  },
-  '/library/tracks': {
-    title: 'All Tracks',
-    subtitle: 'Browse everything in the local library and start playback with one click.'
-  },
-  '/library/favorites': {
-    title: 'Favorites',
-    subtitle: 'Keep a focused shelf of liked tracks and return to them instantly.'
-  },
-  '/library/albums': {
-    title: 'Albums',
-    subtitle: 'Explore the library album by album, then drill into individual releases.'
-  },
-  '/search': {
-    title: 'Search',
-    subtitle: 'Filter the local library quickly now, and grow into SQLite search later if needed.'
-  },
-  '/settings': {
-    title: 'Settings',
-    subtitle: 'Manage theme, saved folders, and the app-level behavior exposed through the preload bridge.'
-  }
+const titles: Record<string, { title: string; eyebrow: string }> = {
+  '/': { title: 'Listen Now', eyebrow: 'Local library' },
+  '/library/tracks': { title: 'Songs', eyebrow: 'Library' },
+  '/library/favorites': { title: 'Favorites', eyebrow: 'Library' },
+  '/library/albums': { title: 'Albums', eyebrow: 'Library' },
+  '/search': { title: 'Search', eyebrow: 'Find music' },
+  '/settings': { title: 'Settings', eyebrow: 'PulseLocal' }
 }
 
 export default function Header() {
@@ -42,76 +24,73 @@ export default function Header() {
   const copy =
     titles[location.pathname] ??
     (matchPath('/library/albums/:artistId/:albumId', location.pathname)
-        ? {
-            title: 'Album Detail',
-            subtitle: 'Review the track list for a release and play it as a focused queue.'
-          }
+      ? { title: 'Album', eyebrow: 'Library' }
       : matchPath('/playlists/:id', location.pathname)
-          ? {
-              title: 'Playlist Detail',
-              subtitle: 'Rename, curate, and manage a custom listening queue from the local library.'
-            }
-          : {
-              title: 'Player',
-              subtitle: 'Keep iterating on the desktop shell with richer views and playback workflows.'
-            })
+        ? { title: 'Playlist', eyebrow: 'Curated' }
+        : { title: 'PulseLocal', eyebrow: 'Music' })
 
   return (
-    <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
-      <div>
-        <div className="text-xs uppercase tracking-[0.22em] text-aurora">PulseLocal</div>
-        <h1 className="mt-2 text-2xl font-semibold text-white">{copy.title}</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">{copy.subtitle}</p>
+    <header className="flex h-[76px] shrink-0 items-center justify-between gap-4 border-b border-black/10 bg-white/78 px-5 backdrop-blur-2xl dark:border-white/10 dark:bg-[#17171a]/80 sm:px-8">
+      <div className="min-w-0">
+        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+          {copy.eyebrow}
+        </div>
+        <h1 className="mt-1 truncate text-3xl font-bold tracking-tight text-slate-950 dark:text-white">
+          {copy.title}
+        </h1>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={toggleLyrics}
           disabled={!currentTrack}
-          className={`rounded-2xl border px-4 py-2 text-sm transition ${
+          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
             !currentTrack
-              ? 'cursor-not-allowed border-white/10 bg-white/[0.03] text-slate-500'
+              ? 'cursor-not-allowed bg-black/5 text-slate-400 dark:bg-white/5 dark:text-slate-600'
               : lyricsVisible
-                ? 'border-aurora/40 bg-aurora/15 text-aurora hover:bg-aurora/20'
-                : 'border-white/10 bg-white/5 text-slate-100 hover:bg-white/10'
+                ? 'bg-accent text-white'
+                : 'bg-black/5 text-slate-700 hover:bg-black/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12'
           }`}
         >
-          {lyricsVisible ? 'Hide Lyrics' : 'Lyrics'}
+          Lyrics
         </button>
         <button
           type="button"
           onClick={toggleQueue}
-          className={`rounded-2xl border px-4 py-2 text-sm transition ${
+          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
             queueVisible
-              ? 'border-aurora/40 bg-aurora/15 text-aurora hover:bg-aurora/20'
-              : 'border-white/10 bg-white/5 text-slate-100 hover:bg-white/10'
+              ? 'bg-accent text-white'
+              : 'bg-black/5 text-slate-700 hover:bg-black/10 dark:bg-white/8 dark:text-slate-200 dark:hover:bg-white/12'
           }`}
         >
-          {queueVisible ? 'Hide Queue' : 'Queue'}
+          Queue
         </button>
         <ThemeToggle />
-        <div className="flex items-center gap-2">
+        <div className="ml-1 flex items-center gap-1 rounded-full bg-black/5 p-1 dark:bg-white/8">
           <button
             type="button"
             onClick={() => void musicApi.minimizeWindow()}
-            className="rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5"
+            className="grid h-8 w-8 place-items-center rounded-full text-xs text-slate-600 transition hover:bg-white/80 dark:text-slate-300 dark:hover:bg-white/12"
+            aria-label="Minimize window"
           >
-            Minimize
+            -
           </button>
           <button
             type="button"
             onClick={() => void musicApi.toggleMaximizeWindow()}
-            className="rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5"
+            className="grid h-8 w-8 place-items-center rounded-full text-xs text-slate-600 transition hover:bg-white/80 dark:text-slate-300 dark:hover:bg-white/12"
+            aria-label="Maximize window"
           >
-            Maximize
+            +
           </button>
           <button
             type="button"
             onClick={() => void musicApi.closeWindow()}
-            className="rounded-xl border border-red-400/30 px-3 py-2 text-xs text-red-200 hover:bg-red-500/10"
+            className="grid h-8 w-8 place-items-center rounded-full text-xs font-semibold text-rose-600 transition hover:bg-rose-100 dark:text-rose-300 dark:hover:bg-rose-500/15"
+            aria-label="Close window"
           >
-            Close
+            x
           </button>
         </div>
       </div>
